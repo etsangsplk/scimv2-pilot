@@ -279,9 +279,10 @@ public class FilterTranslator {
         if (attributes != null) {
             String[] attrs = attributes.split(',');
             for (String attr : attrs) {
-                // hack to avoid organization from entering the query string
-                if(attr == 'urn:ietf:params:scim:schemas:extension:enterprise:2.0:User:organization') {
-                    break;
+                System.debug('attr: ' + attr);
+                // hack to avoid organization or profielURL from entering the query string
+                if ((attr == 'urn:ietf:params:scim:schemas:extension:enterprise:2.0:User:organization') || (attr == 'profileURL') ){
+                    attr = 'id';
                 }
 
                 ScimSoqlAttributeProcessor attrProcessor = scimNameToSObjectNameMap.get(attr); 
@@ -297,7 +298,7 @@ public class FilterTranslator {
             for (String key : scimNameToSObjectNameMap.keyset()) {
                 ScimSoqlAttributeProcessor attrProcessor = scimNameToSObjectNameMap.get(key);
                 String name = attrProcessor.getSoqlAttribute();
-                if ((name != null) && (name != 'organization')) {
+                if ((name != 'organization') && (name != 'profileURL')) {
                     uniqueSObjectFieldNames.addAll(attrProcessor.getSoqlAttributeList());
                 }
             }
@@ -307,7 +308,7 @@ public class FilterTranslator {
             String[] exAttrs = excludedAttributes.split(',');
             for (string attr : exAttrs){               
                 // hack to avoid organization from entering the query string
-                if(attr == 'urn:ietf:params:scim:schemas:extension:enterprise:2.0:User:organization') {
+                if ((attr == 'urn:ietf:params:scim:schemas:extension:enterprise:2.0:User:organization') || (attr == 'profileURL') ){
                     break;
                 }
 
@@ -380,8 +381,7 @@ public class FilterTranslator {
                 offset = Integer.valueof(startIndex) - 1;
                 soql += ' OFFSET ' + offset;
             }
-        }
-
+        }        
         return new QueryHolder(countSoql, soql, noPagingSoql, lim, offset);
     }
     

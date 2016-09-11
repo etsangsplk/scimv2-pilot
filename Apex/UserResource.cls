@@ -60,6 +60,7 @@ global with sharing class UserResource extends ScimResource {
         scimNameToUserSObjectNameMap.put('roles', new RolesAttributeProcessor());
         
         // profileUrl - should this be URL to user object
+        scimNameToUserSObjectNameMap.put('profileURL', new StandardAttributeProcessor('profileURL', Schema.SOAPType.String, false));
         
         // enterprise extensions
         scimNameToUserSObjectNameMap.put(enterpriseExtensionURN, new StandardAttributeProcessor('organization,employeeNumber,Division,Department,ManagerId,Manager.Name', null, true));
@@ -911,6 +912,8 @@ global with sharing class UserResource extends ScimResource {
         serializeUserWithGenerator(users, attributes, null, host, gen);
     }
     
+    // add limit checks to prevent 'Too many SOQL query' problem
+    // https://github.com/salesforceidentity/scimv2-pilot/issues/3
     public static void serializeUserWithGenerator(List<User> users, String attributes, String excludedAttributes, String host, JSONGenerator gen) {
               
         // based $ref for all scim objects
@@ -1111,7 +1114,10 @@ global with sharing class UserResource extends ScimResource {
                 if ((shouldSerialize('locale', attributes, excludedAttributes)) &&  (user.LocaleSidKey != null)) gen.writeStringField('locale', user.LocaleSidKey);
                 if ((shouldSerialize('timezone', attributes, excludedAttributes)) &&  (user.TimeZoneSidKey != null)) gen.writeStringField('timezone', user.TimeZoneSidKey);
                 if ((shouldSerialize('active', attributes, excludedAttributes)) && (user.IsActive != null)) gen.writeBooleanField('active', user.IsActive);
-                if (shouldSerialize('entitlements', attributes, excludedAttributes)) {
+            
+            if (shouldSerialize('profileURL', attributes, excludedAttributes)) gen.writeStringField('profileURL', 'https://' + host + '/' + user.id);
+
+            if (shouldSerialize('entitlements', attributes, excludedAttributes)) {
                 gen.writeFieldName('entitlements');
                     gen.writeStartArray();
                         gen.writeStartObject();
@@ -1163,8 +1169,9 @@ global with sharing class UserResource extends ScimResource {
                             gen.writeStringField('display', user.UserRole.Name);
                         gen.writeEndObject();  
                     gen.writeEndArray(); 
-                }        
-                
+                }               
+            
+            
                 if (shouldSerialize(enterpriseExtensionURN, attributes, excludedAttributes)) {
                     gen.writeFieldName(enterpriseExtensionURN);
                     gen.writeStartObject();
