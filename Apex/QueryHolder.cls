@@ -14,12 +14,10 @@ global class QueryHolder {
     private Integer offset;
     
     public String getCountQuery() {
-        System.debug(this.countQuery);
         return this.countQuery;
     }
     
     public String getActualQuery() {
-        System.debug(this.actualQuery);
         return this.actualQuery;
     }   
     

@@ -359,7 +359,6 @@ global class SchemasResource {
                     gen.writeStringField('type', 'complex');   
                     gen.writeBooleanField('multiValued', true); 
                     gen.writeStringField('description', 'Phone numbers for the User');                   
-
                     gen.writeStringField('mutability', 'readWrite');                            
                     gen.writeBooleanField('required', false);                             
                     gen.writeBooleanField('caseExact', false); 
@@ -470,9 +469,8 @@ global class SchemasResource {
                 gen.writeStartObject();
                     gen.writeStringField('name', 'addresses');                       
                     gen.writeStringField('type', 'complex');   
-                    gen.writeBooleanField('multiValued', false); 
+                    gen.writeBooleanField('multiValued', true); 
                     gen.writeStringField('description', 'The full mailing address');                   
-
                     gen.writeStringField('mutability', 'readWrite');                            
                     gen.writeBooleanField('required', false);                             
                     gen.writeBooleanField('caseExact', false); 
@@ -709,7 +707,7 @@ global class SchemasResource {
                 gen.writeStartObject();
                     gen.writeStringField('name', 'members');                       
                     gen.writeStringField('type', 'complex');   
-                    gen.writeBooleanField('multiValued', false); 
+                    gen.writeBooleanField('multiValued', true); 
                     gen.writeStringField('description', 'The members of the group');                   
 
                     gen.writeStringField('mutability', 'readWrite');                            
