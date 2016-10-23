@@ -949,7 +949,7 @@ global with sharing class UserResource extends ScimResource {
                 gms.add(gm);
             }
         }
-        
+/*        
         // bulk get the Network membership
         Map<Id, List<NetworkMember>> nmMap = new Map<Id, List<NetworkMember>>();
         if (shouldSerialize(communitiesSchemaURN, attributes, excludedAttributes)){
@@ -963,6 +963,7 @@ global with sharing class UserResource extends ScimResource {
                 nms.add(nm);
             }
         }
+*/
         
         for (User user : users) {
             Map<String, Schema.SObjectField> r = Schema.sObjectType.User.fields.getMap();
@@ -1247,7 +1248,8 @@ global with sharing class UserResource extends ScimResource {
                         }
                     gen.writeEndObject();    
                 }                    
-                
+
+/*                
             if(shouldSerialize(communitiesSchemaURN, attributes, excludedAttributes)){
                     List<NetworkMember> memberships = nmMap.get(user.id);
                 if (memberships != null) {
@@ -1264,6 +1266,7 @@ global with sharing class UserResource extends ScimResource {
                     gen.writeEndArray();                     
                 }
             }
+*/
                 
                 if (shouldSerialize('urn:salesforce:schemas:extension:' + UserInfo.getOrganizationId(), attributes, excludedAttributes)) {
                     if (!customFieldMap.isEmpty()) {    

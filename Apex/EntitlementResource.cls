@@ -26,9 +26,12 @@ global class EntitlementResource extends ScimResource {
         String[] uriParts = req.requestURI.split('/',0);
         Integer numParts = uriParts.size() - 1;
         
+        System.debug(uriParts + ' '+ numParts);
+        
         Boolean isFound = false;
         String entitlementType ='';
         String entitlementId = uriParts[numParts];
+        System.debug('entId: ' + entitlementId);
         if (entitlementId.startsWith('00e')) {
             isFound = !([select ID from Profile where ID = :entitlementId].isEmpty());
             entitlementType = 'profile';
@@ -37,15 +40,15 @@ global class EntitlementResource extends ScimResource {
             isFound = !([select ID from PermissionSet where ID = :entitlementId].isEmpty());
             entitlementType = 'permissionSet';
         }
-        
-        if (numParts >= 4 || !isFound) { 
+        System.debug('entType: ' + entitlementType);
+        if (numParts > 4 || !isFound) { 
             res.statusCode = 404;
             res.addHeader('Content-Type', 'application/json');
             res.responseBody = SCIMError.serializeError(res.statusCode, 'No such resource.', req.headers.containsKey('X-Prettyprint'));
             return;
         }        
         
-        SCIMPatchParser entitlementPP = new SCIMPatchParser(req.requestBody.toString());
+        EntitlementPatchParser entitlementPP = EntitlementPatchParser.parse(req.requestBody.toString());
         String schema = entitlementPP.schemas.get(0);
         if (!schema.equals('urn:ietf:params:scim:api:messages:2.0:PatchOp')){
             res.statusCode = 400;
@@ -55,26 +58,24 @@ global class EntitlementResource extends ScimResource {
         
         Savepoint sp = Database.setSavepoint();
         try {
-			for (SCIMPatchParser.Operation op : entitlementPP.operations){
-				String operation = op.op;
-                // Entitlement Patch expects either path=members
-                // or a value value of "members":"ID"
+            for (EntitlementPatchParser.Operations op : entitlementPP.operations){
+                String operation = op.op;
+                // Entitlement Patch expects path to be members
+                // and value must me list of values
                 // everything else will not be parsed
-                
+                String path = op.path;
                 List<User> usersToBeProcessed = new List<User>();
-                for (Map<String, Object> val : op.value){
-                    User tempUser = new User();
-                    if ((op.path=='members') && (val.keySet().contains('value'))){
-                        tempUser.Id = (id)val.get('value');
-                    } else if (val.keySet().contains('members')){
-                        tempUser.Id = (id)val.get('members');                        
-                    }
-                    usersToBeProcessed.add(tempUser);
+                if (path == 'members') {
+                    for (EntitlementPatchParser.Value val : op.value){
+                        User tempUser = new User();
+                        tempUser.Id = (id)val.value;
+                        usersToBeProcessed.add(tempUser);                        
+                    }                    
                 }
 
                 for (User tempUser : usersToBeProcessed){
                     User u = [select id, userRoleId from User where id = :tempUser.id limit 1];
-
+                    System.debug('entType: ' + entitlementType + ' op: ' + operation);
                     // process profile assignments
                     if (entitlementType == 'profile'){
                         if (operation == 'add'){
@@ -83,19 +84,17 @@ global class EntitlementResource extends ScimResource {
                             scimEx.setStatusCode(400);
                             throw scimEx;
                         } else if (operation == 'replace'){
-                                u.ProfileId = entitlementId;
-                                update u;
-                            }
+                            u.ProfileId = entitlementId;
+                            update u;
                         } else if (operation == 'remove'){
                             //not meaningful
+                            //double checking
                             ScimException scimEx = new ScimException('Cannot remove a profile from an existing user');
                             scimEx.setStatusCode(400);
                             throw scimEx;
                         }
-                    
-                // process permSet
-                if (entitlementType == 'permissionSet'){
-	                if (operation == 'add'){                        
+                    } else if (entitlementType == 'permissionSet'){                 // process permSet
+                    if (operation == 'add'){                        
                         // avoid duplicate insertion errors
                         List<PermissionSetAssignment> existingPSAs = new List <PermissionSetAssignment>();
                         existingPSAs = [SELECT Id FROM PermissionSetAssignment where AssigneeId = :u.Id and permissionSetId = :entitlementId];
@@ -105,7 +104,7 @@ global class EntitlementResource extends ScimResource {
                             newPsa.permissionSetId = entitlementId;
                             insert newPsa;                                                                
                         }
-	                } else if (operation == 'replace'){
+                    } else if (operation == 'replace'){
                         // this will replace the permSet assignments for the user
                         // it will not replace the users in the permSet
                         // which is to say, it will not remove all of the PermSet assignments and then add the mention users
@@ -122,14 +121,14 @@ global class EntitlementResource extends ScimResource {
                         newPsa.permissionSetId = entitlementId;
                         System.debug('new permset: ' + newPSA);
                         insert newPsa;                        
-	                } else if (operation == 'remove'){
+                    } else if (operation == 'remove'){
                         //delete the current users assignments
                         List<PermissionSetAssignment> assignedPS = [select id from PermissionSetAssignment where PermissionSetId = :entitlementId and AssigneeId = :u.Id];
                         delete assignedPS;
 	                }
 	            }
-                }                   
-			}            
+                }
+            }
         } catch (SCIMException e) {
             res.addHeader('Content-Type', 'application/json');
             res.statusCode = e.getStatusCode();
@@ -137,7 +136,7 @@ global class EntitlementResource extends ScimResource {
                 res.statusCode = 500;
             } 
             res.responseBody = ScimError.serializeError(res.statusCode, e.getMessage(), req.headers.containsKey('X-Prettyprint'));
-			Database.rollback(sp);
+            Database.rollback(sp);
             return;
         }
 
