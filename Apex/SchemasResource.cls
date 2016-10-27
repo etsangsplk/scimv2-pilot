@@ -199,7 +199,7 @@ global class SchemasResource {
                     gen.writeBooleanField('multiValued', false); 
                     gen.writeStringField('description', 'The name of the User, suitable for display');                   
 
-                    gen.writeStringField('mutability', 'readWrite');                            
+                    gen.writeStringField('mutability', 'readOnly');                            
                     gen.writeBooleanField('required', false); 
                     gen.writeBooleanField('caseExact', false); 
                 gen.writeEndObject();

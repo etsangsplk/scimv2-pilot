@@ -249,7 +249,8 @@ global with sharing class UserResource extends ScimResource {
         UserResource user;
         Savepoint sp = Database.setSavepoint();
         try {
-             user = new UserResource(req.requestBody);
+            user = new UserResource(req.requestBody);
+            System.debug('user: ' + user);
         } catch (ScimException scex) {
             res.statusCode = scex.getStatusCode();
             error = scex.getMessage();
@@ -407,7 +408,6 @@ global with sharing class UserResource extends ScimResource {
                     }
                 }
             }
-            
     
             if ( user.title != null) {
                 u.title = user.title;
@@ -1544,7 +1544,8 @@ global with sharing class UserResource extends ScimResource {
         UserPatchParserUntyped userPP = new UserPatchParserUntyped(req.requestBody.toString());
 //        UserPatchParser userPP = UserPatchParser.parse(req.requestBody.toString());
         String schema = userPP.schemas.get(0);
-        System.debug(schema);
+
+        System.debug('userPP: ' + userPP);
         if (!schema.equals('urn:ietf:params:scim:api:messages:2.0:PatchOp')){
             res.statusCode = 400;
             res.responseBody = SCIMError.serializeError(res.statusCode, 'Improper Schema.', req.headers.containsKey('X-Prettyprint'));
@@ -1679,59 +1680,6 @@ global with sharing class UserResource extends ScimResource {
                     } else if (key == 'active'){
                         tempUser.isActive = (Boolean) value.get(key);
                     }
-
-                    // custom fields
-                    if (scimNameToUserSObjectNameMap.containsKey(key)){
-                        Object customFieldValue = scimNameToUserSObjectNameMap.get(key);
-                        ScimSoqlAttributeProcessor customProcessor =  scimNameToUserSObjectNameMap.get(key);
-                        
-                        // NOTE: customFieldValue is always a string, because of a limitation of 
-                        // the parseSimpleObject de-serializing always with getText.
-                        // making it dynamic there makes the method not simple in principle, so
-                        // for simplicity, we just coerce it back to the right type here based on
-                        // the field's type
-                        Schema.SOAPType type = customProcessor.getSOAPType();
-                        if (String.valueOf(type) == 'BOOLEAN'){
-                            System.debug(String.valueOf(type));
-                        }
-                        
-                        // TODO
-                        // should not have to do straigh string comparison
-                        // but cannot figure out why the same code copied from doCreateOrUpdate
-                        // won't work here
-                        if (String.valueOf(type) == 'BOOLEAN') {
-                            tempUser.put(customProcessor.getSoqlAttribute(), Boolean.valueOf(value.get(key)));
-                        }
-                        
-                        else if (String.valueOf(type) == 'DATE') {
-                           tempUser.put(customProcessor.getSoqlAttribute(), Date.valueOf(value.get(key)));
-                        }
-                        else if (String.valueOf(type) == 'DATETIME') {
-                           tempUser.put(customProcessor.getSoqlAttribute(), Datetime.valueOf(value.get(key)));
-                        }
-                        else if (String.valueOf(type) == 'DOUBLE') {
-                           tempUser.put(customProcessor.getSoqlAttribute(), Double.valueOf(value.get(key)));
-                        }
-                        else if (String.valueOf(type) == 'ID') {
-                           tempUser.put(customProcessor.getSoqlAttribute(), String.valueOf(value.get(key)));
-                        }
-                        else if (String.valueOf(type) == 'INTEGER') {
-                           tempUser.put(customProcessor.getSoqlAttribute(), Integer.valueOf(value.get(key)));
-                        }
-                        else if (String.valueOf(type) == 'STRING') {
-                           tempUser.put(customProcessor.getSoqlAttribute(), String.valueOf(value.get(key)));
-                        }
-                        else if (String.valueOf(type) == 'TIME') {
-                           tempUser.put(customProcessor.getSoqlAttribute(), Datetime.valueOf(value.get(key)));
-                        }     
-                        else if (String.valueOf(type) == 'BASE64BINARY') {
-                           tempUser.put(customProcessor.getSoqlAttribute(), EncodingUtil.base64Decode((String) value.get(key)));
-                        }                                                    
-                        else {
-                            error += 'INVALID:unsupported field type for field : ' + key;  
-                            res.statusCode = 400;
-                        }
-                    }
                     
                     // roles / userRoleId
                     if ((key == 'roles') && (operation == 'remove')) {
@@ -1781,6 +1729,7 @@ global with sharing class UserResource extends ScimResource {
                     // entitlements
                     // expects list of entitlements to use id key
                     if (key == 'entitlements'){
+                        System.debug('in entitlements PATCH');
                         if (operation == 'remove'){
                             // cannot remove all entitlements
                             // because you cannot remove profile
@@ -1866,7 +1815,61 @@ global with sharing class UserResource extends ScimResource {
                             }      
                         }
                     }
+                    
+                    // custom fields
+                    if (scimNameToUserSObjectNameMap.containsKey(key)){
+                        Object customFieldValue = scimNameToUserSObjectNameMap.get(key);
+                        ScimSoqlAttributeProcessor customProcessor =  scimNameToUserSObjectNameMap.get(key);
+                        
+                        // NOTE: customFieldValue is always a string, because of a limitation of 
+                        // the parseSimpleObject de-serializing always with getText.
+                        // making it dynamic there makes the method not simple in principle, so
+                        // for simplicity, we just coerce it back to the right type here based on
+                        // the field's type
+                        Schema.SOAPType type = customProcessor.getSOAPType();
+                        if (String.valueOf(type) == 'BOOLEAN'){
+                            System.debug(String.valueOf(type));
+                        }
+                        
+                        // TODO
+                        // should not have to do straigh string comparison
+                        // but cannot figure out why the same code copied from doCreateOrUpdate
+                        // won't work here
+                        if (String.valueOf(type) == 'BOOLEAN') {
+                            tempUser.put(customProcessor.getSoqlAttribute(), Boolean.valueOf(value.get(key)));
+                        }
+                        
+                        else if (String.valueOf(type) == 'DATE') {
+                           tempUser.put(customProcessor.getSoqlAttribute(), Date.valueOf(value.get(key)));
+                        }
+                        else if (String.valueOf(type) == 'DATETIME') {
+                           tempUser.put(customProcessor.getSoqlAttribute(), Datetime.valueOf(value.get(key)));
+                        }
+                        else if (String.valueOf(type) == 'DOUBLE') {
+                           tempUser.put(customProcessor.getSoqlAttribute(), Double.valueOf(value.get(key)));
+                        }
+                        else if (String.valueOf(type) == 'ID') {
+                           tempUser.put(customProcessor.getSoqlAttribute(), String.valueOf(value.get(key)));
+                        }
+                        else if (String.valueOf(type) == 'INTEGER') {
+                           tempUser.put(customProcessor.getSoqlAttribute(), Integer.valueOf(value.get(key)));
+                        }
+                        else if (String.valueOf(type) == 'STRING') {
+                           tempUser.put(customProcessor.getSoqlAttribute(), String.valueOf(value.get(key)));
+                        }
+                        else if (String.valueOf(type) == 'TIME') {
+                           tempUser.put(customProcessor.getSoqlAttribute(), Datetime.valueOf(value.get(key)));
+                        }     
+                        else if (String.valueOf(type) == 'BASE64BINARY') {
+                           tempUser.put(customProcessor.getSoqlAttribute(), EncodingUtil.base64Decode((String) value.get(key)));
+                        }                                                    
+                        else {
+                            error += 'INVALID:unsupported field type for field : ' + key;  
+                            res.statusCode = 400;
+                        }
+                    }
 
+                    
                                 /*
                 // email
                 // this likely wont work if email is sent in the value
