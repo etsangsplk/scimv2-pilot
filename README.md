@@ -22,14 +22,16 @@ This implementation supports the following endpoints:
 * Schemas: /services/apexrest/scim/v2/Schemas
 
 This implementation supports:
-* GET against all endpoints as well as POST-based search against /Users
+* GET against all endpoints
+* POST and PUT against /Users
 * /Users also has preliminary support for PATCH as does /Groups and /Entitlements - Use with caution. Keep in mind this implementation does not support filters in path attributes of PATCH operations
+* POST-based search against /Users
 
 Creating External Users
 -----------------------
 This implementation can create external users. In order to do so, you must:
 * Specify a Profile (as an Entitlement) of the correct type e.g. External Identity, Customer Community, etc
-* If you are using Person Accounts, then you do not need to specify anything else. The following is valid SCIM for PersonAccounts.
+* If you are using Person Accounts, then you do not need to specify anything else. For example:
 
 `{
 	"schemas": [
@@ -64,6 +66,7 @@ This implementation can create external users. In order to do so, you must:
 }`
 
 * If you are using Business Accounts, then you will need to include a valid urn:salesforce:schemas:extension:external:1.0:accountId which maps to the ID of the Salesforce Account in which you'd like to create the associated Contact object. For example:
+
 `{
 	"schemas": [
 		"urn:scim:schemas:core:1.0",
