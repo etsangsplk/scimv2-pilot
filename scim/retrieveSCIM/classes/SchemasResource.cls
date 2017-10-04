@@ -247,6 +247,7 @@ global class SchemasResource {
                     gen.writeBooleanField('required', false); 
                     gen.writeBooleanField('caseExact', false); 
                 gen.writeEndObject();
+
                 //preferredLanguage
                 gen.writeStartObject();
                     gen.writeStringField('name', 'preferredLanguage');                       
@@ -255,9 +256,22 @@ global class SchemasResource {
                     gen.writeStringField('description', 'The Users preferred written or spoken language. Generally used for selecting a localized User interface.  Valid values are concatenation of the ISO 639-1 two letter language code, an underscore, and the ISO 3166-1 2 letter country code; e.g., en_US specifies the language English and country US');                   
 
                     gen.writeStringField('mutability', 'readWrite');                            
+                    gen.writeBooleanField('required', true); 
+                    gen.writeBooleanField('caseExact', false); 
+                gen.writeEndObject();
+
+                //emailEncodingKey
+                gen.writeStartObject();
+                    gen.writeStringField('name', 'emailEncodingKey');                       
+                    gen.writeStringField('type', 'string');   
+                    gen.writeBooleanField('multiValued', false); 
+                    gen.writeStringField('description', 'The email encoding for the user, such as ISO-8859-1 or UTF-8.');                   
+
+                    gen.writeStringField('mutability', 'reatruedWrite');                            
                     gen.writeBooleanField('required', false); 
                     gen.writeBooleanField('caseExact', false); 
                 gen.writeEndObject();
+
                 //locale
                 gen.writeStartObject();
                     gen.writeStringField('name', 'locale');                       
@@ -266,7 +280,7 @@ global class SchemasResource {
                     gen.writeStringField('description', 'Used to indicate the Users default location for purposes of localizing items such as currency, date time format, numerical representations, etc. A locale value is a concatenation of the ISO 639-1 two letter language code an underscore, and the ISO 3166-1 2 letter country code; e.g., en_US specifies the language English  and country US');                   
 
                     gen.writeStringField('mutability', 'readWrite');                            
-                    gen.writeBooleanField('required', false); 
+                    gen.writeBooleanField('required', true); 
                     gen.writeBooleanField('caseExact', false); 
                 gen.writeEndObject();
                 //timezone

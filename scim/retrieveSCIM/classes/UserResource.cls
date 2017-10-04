@@ -16,7 +16,7 @@ global with sharing class UserResource extends ScimResource {
     
     final public static Set<String> unsupportedAttrs = new Set<String>{'middlename', 'honorificPrefix', 'honorificSuffix', 'costCenter'};
     final public static Set<String> readOnlyAttrs = new Set<String>{'displayName', 'profileURL', 'photos', 'userType', 'id', 'formatted', 'organization'};
-
+    final public static Set<String> notNillableAttrs = new Set<String>{'alias','password', 'emails'};
     
     static {
         portalUserTypes.add('cspliteportal');
@@ -52,7 +52,8 @@ global with sharing class UserResource extends ScimResource {
         scimNameToUserSObjectNameMap.put('userType', new StandardAttributeProcessor('UserType', Schema.SOAPType.String, false));
         scimNameToUserSObjectNameMap.put('title', new StandardAttributeProcessor('Title', Schema.SOAPType.String, false));
         scimNameToUserSObjectNameMap.put('preferredLanguage', new StandardAttributeProcessor('LanguageLocaleKey', Schema.SOAPType.String, false));
-        scimNameToUserSObjectNameMap.put('locale', new StandardAttributeProcessor('LocaleSidKey', Schema.SOAPType.String, false));
+        scimNameToUserSObjectNameMap.put('emailEncodingKey', new StandardAttributeProcessor('EmailEncodingKey', Schema.SOAPType.String, false));  
+        scimNameToUserSObjectNameMap.put('locale', new StandardAttributeProcessor('LocaleSidKey', Schema.SOAPType.String, false));      
         scimNameToUserSObjectNameMap.put('timezone',new StandardAttributeProcessor('TimeZoneSidKey', Schema.SOAPType.String, false));
         scimNameToUserSObjectNameMap.put('active', new StandardAttributeProcessor('IsActive', Schema.SOAPType.Boolean, false));
         scimNameToUserSObjectNameMap.put('entitlements', new EntitlementsAttributeProcessor());
@@ -149,6 +150,7 @@ global with sharing class UserResource extends ScimResource {
     public String userType {get;set;}
     public String title {get;set;}
     public String preferredLanguage {get;set;}
+    public String emailEncodingKey {get;set;}
     public String locale {get;set;}
     public String timezone {get;set;}
     public Boolean active {get;set;}
@@ -195,6 +197,7 @@ global with sharing class UserResource extends ScimResource {
             if (isNextTokenField(parser,'userType')) this.userType = parseString('userType', parser);
             if (isNextTokenField(parser,'title')) this.title = parseString('title', parser);
             if (isNextTokenField(parser,'preferredLanguage')) this.preferredLanguage = parseString('preferredLanguage', parser);
+			if (isNextTokenField(parser,'emailEncodingKey')) this.emailEncodingKey = parseString('emailEncodingKey', parser);
             if (isNextTokenField(parser,'locale')) this.locale = parseString('locale', parser);
             if (isNextTokenField(parser,'timezone')) this.timezone = parseString('timezone', parser);
             if (isNextTokenField(parser,'active')) this.active = parseBoolean('active', parser);
@@ -225,6 +228,7 @@ global with sharing class UserResource extends ScimResource {
             }             
         }     
     }
+    
     @HttpPost
     global static void doPost() {
         RestRequest req = RestContext.request;
@@ -419,6 +423,12 @@ global with sharing class UserResource extends ScimResource {
                 u.languagelocalekey = 'en_US';
             }
             
+            if ( user.emailEncodingKey != null) {
+                u.emailEncodingKey = user.emailEncodingKey;
+            } else if (isCreate) {
+                u.languagelocalekey = 'UTF-8';
+            }
+                        
             if ( user.locale != null) {
                 u.localesidkey = user.locale;
             } else if (isCreate){
@@ -745,7 +755,6 @@ global with sharing class UserResource extends ScimResource {
                     Database.update(existingContact);
                 }
             }
-            u.emailencodingkey = 'UTF-8';
         }
 
         if (res.statusCode == 201 ) {
@@ -1112,6 +1121,7 @@ global with sharing class UserResource extends ScimResource {
                 if ((shouldSerialize('userType', attributes, excludedAttributes)) &&  (user.UserType != null)) gen.writeStringField('userType', user.UserType);
                 if ((shouldSerialize('title', attributes, excludedAttributes)) &&  (user.Title != null)) gen.writeStringField('title', user.Title);
                 if ((shouldSerialize('preferredLanguage', attributes, excludedAttributes)) &&  (user.LanguageLocaleKey != null)) gen.writeStringField('preferredLanguage', user.LanguageLocaleKey);
+                if ((shouldSerialize('emailEncodingKey', attributes, excludedAttributes)) &&  (user.emailEncodingKey != null)) gen.writeStringField('emailEncodingKey', user.emailEncodingKey);
                 if ((shouldSerialize('locale', attributes, excludedAttributes)) &&  (user.LocaleSidKey != null)) gen.writeStringField('locale', user.LocaleSidKey);
                 if ((shouldSerialize('timezone', attributes, excludedAttributes)) &&  (user.TimeZoneSidKey != null)) gen.writeStringField('timezone', user.TimeZoneSidKey);
                 if ((shouldSerialize('active', attributes, excludedAttributes)) && (user.IsActive != null)) gen.writeBooleanField('active', user.IsActive);
@@ -1504,6 +1514,15 @@ global with sharing class UserResource extends ScimResource {
         }
         return result;
     }
+
+    public static boolean isNotNillable (String attr) {
+        Boolean result = false;
+        if (notNillableAttrs.contains(attr)) {
+            result = true;
+        }
+        return result;
+    }
+
     
     public static boolean isReadOnly (String attr) {
         Boolean result = false;
@@ -1515,13 +1534,7 @@ global with sharing class UserResource extends ScimResource {
     
     @HttpPatch
     global static void doPatch() {
-        // only using key for attribute identification
-        // awaiting IETF WG guidance on PATCH
-        // current approach doesn't work for complex attributes
-
-        // TODO make work with complex attributes
-        // TODO update related Contact if external user
-        // TODO figure out why type handling in custom fields is inconsistent
+        // will use SCIMPatchSimple rules for Patch
         
         RestRequest req = RestContext.request;
         RestResponse res = RestContext.response;
@@ -1541,235 +1554,199 @@ global with sharing class UserResource extends ScimResource {
         User tempUser = new User();
         tempUser.id = user.Id;
         
-        UserPatchParserUntyped userPP = new UserPatchParserUntyped(req.requestBody.toString());
-//        UserPatchParser userPP = UserPatchParser.parse(req.requestBody.toString());
-        String schema = userPP.schemas.get(0);
+		UserPatchResource upr = new UserPatchResource(req.requestBody);
+        String schema = upr.schemas.get(0);
 
-        System.debug('userPP: ' + userPP);
+        System.debug('Patch Resource: ' + upr);
         if (!schema.equals('urn:ietf:params:scim:api:messages:2.0:PatchOp')){
             res.statusCode = 400;
             res.responseBody = SCIMError.serializeError(res.statusCode, 'Improper Schema.', req.headers.containsKey('X-Prettyprint'));
             return;
         }
         
+        String passwordString;
+        
         Savepoint sp = Database.setSavepoint();
         try {
-            String passwordString = null;
-            for (UserPatchParserUntyped.Operation op : userPP.operations){
+            for (UserPatchResource.Operation op : upr.operations){
                 String operation = op.op;
                 String path = op.path;
-                Map<String, Object> value = op.value;
-                Set<String> values = new Set<String>();
-                for (String key : value.keySet()){
-                    System.debug('key: ' + key);
-                    // unsupported attributes
-                    if (isUnsupported(key)){
-                        res.statusCode = 400;
-                        error += 'UNSUPPORTED_FIELD: ' + key;
-                        SCIMException e = new SCIMException();
-                        e.setMessage(error);
-                        e.setStatusCode(400);
-                        throw e;
-                    }
-                    
-                    // key = givenName / firstName
-                    if ((key == 'givenName') && (operation == 'remove')) {
-                        tempUser.firstname = null;
-                    } else if (key == 'givenName'){
-                        tempUser.firstname = (String) value.get(key);
-                    }
-
-                    // key = familyName / lastName
-                    if ((key == 'familyName') && (operation == 'remove')) {
-                        tempUser.lastName = null;
-                    } else if (key == 'familyName'){
-                        tempUser.lastName = (String) value.get(key);
-                    }
-                    
-                    // key = title / title
-                    if ((key == 'title') && (operation == 'remove')) {
-                        tempUser.title = null;
-                    } else if (key == 'title'){
-                        tempUser.title = (String) value.get(key);
-                    }
-
-                    // key = preferredLanguage / languagelocalekey
-                    if ((key == 'preferredLanguage') && (operation == 'remove')) {
-                        tempUser.languagelocalekey = null;
-                    } else if (key == 'preferredLanguage'){
-                        tempUser.languagelocalekey = (String) value.get(key);
-                    }
-
-                    // key = locale / localesidkey
-                    if ((key == 'locale') && (operation == 'remove')) {
-                        tempUser.localesidkey = null;
-                    } else if (key == 'locale'){
-                        tempUser.localesidkey = (String) value.get(key);
-                    }
-
-                    // key = timezone / timezonesidkey
-                    if ((key == 'timezone') && (operation == 'remove')) {
-                        tempUser.timezonesidkey = null;
-                    } else if (key == 'timezone'){
-                        tempUser.timezonesidkey = (String) value.get(key);
-                    }
-                    
-                    // key = employeeNumber / employeeNumber
-                    if ((key == 'employeeNumber') && (operation == 'remove')) {
-                        tempUser.employeeNumber = null;
-                    } else if (key == 'employeeNumber'){
-                        tempUser.employeeNumber = (String) value.get(key);
-                    }
-
-                    // key = division / division
-                    if ((key == 'division') && (operation == 'remove')) {
-                        tempUser.division = null;
-                    } else if (key == 'division'){
-                        tempUser.division = (String) value.get(key);
-                    }
-
-                    // key = department / department
-                    if ((key == 'department') && (operation == 'remove')) {
-                        tempUser.department = null;
-                    } else if (key == 'department'){
-                        tempUser.department = (String) value.get(key);
-                    }
-
-                    // key = nickName / communityNickname
-                    if ((key == 'nickName') && (operation == 'remove')) {
-                        tempUser.communityNickname = null;
-                    } else if (key == 'nickName'){
-                        tempUser.communityNickname = (String) value.get(key);
-                    }
-                    
-                    // key = alias
-                    if ((key == otherSchemaURN + ':alias') && (operation == 'remove')) {
-                        tempUser.alias = null;
-                    } else if (key == otherSchemaURN + ':alias'){
-                        String tempAlias = (String) value.get(key);
-                        if ( tempAlias.length() > 8){
-                            // truncate Alias to 8 characters silently
-                            tempUser.alias = tempAlias.substring(0,8);                    
-                        } else {
-                            tempUser.alias = tempAlias;
+                
+                // check for remove operations first
+                // to avoid deref'ing nulls
+                if (op.op == 'remove') {
+                    // need to do enterprise extensions
+                    // and other extensions (alias)
+                    if (op.path != null) {
+                        if(op.path == 'givenName') tempUser.firstname = null;
+                        else if (op.path == 'familyName') tempuser.LastName = null;
+                        else if (op.path == 'title') tempuser.title = null;
+                        else if (op.path == 'preferredLanguage') tempuser.languagelocalekey = null;
+                        else if (op.path == 'emailEncodingKey') tempuser.emailEncodingKey = null;
+                        else if (op.path == 'locale') tempuser.localesidkey = null;
+                        else if (op.path == 'timezone') tempuser.timezonesidkey = null;
+                        else if (op.path == 'employeeNumber') tempuser.employeeNumber = null;
+                        else if (op.path == 'division') tempuser.division = null;
+                        else if (op.path == 'department') tempuser.department = null;
+                        else if (op.path == 'nickName') tempuser.communityNickname = null;
+                        else if (op.path == 'manager') tempuser.managerId = null;
+                        else if (op.path == 'delegatedApprover') tempuser.delegatedApproverId = null;
+                        else if (op.path == 'active') tempuser.isActive = false;
+                        else if (op.path == 'roles') tempuser.userRoleId = null;
+                        else if (op.path.startsWith('addresses')) {
+                            tempuser.street = null;
+                            tempuser.city = null;
+                            tempuser.State = null;
+                            tempuser.postalcode = null;
+                            tempuser.Country = null;
                         }
-                    }
-                    
-                    // manager / managerId
-                    if ((key == 'manager') && (operation == 'remove')) {
-                        tempUser.managerId = null;
-                    } else if (key == 'manager'){
-                        tempUser.managerId = (Id) value.get(key);
-                    }
-
-                    // delegatedApprover / delegatedApproverId
-                    if ((key == 'delegatedApprover') && (operation == 'remove')) {
-                        tempUser.delegatedApproverId = null;
-                    } else if (key == 'delegatedApprover'){
-                        tempUser.delegatedApproverId = (Id) value.get(key);
-                    }
-                    
-                    // password
-                    if (key == 'password') {
-                        passwordString = (String)value.get(key);
-                    }
-                    
-                    // active / isActive
-                    if ((key == 'active') && (operation == 'remove')) {
-                        tempUser.isActive = false;
-                    } else if (key == 'active'){
-                        tempUser.isActive = (Boolean) value.get(key);
-                    }
-                    
-                    // roles / userRoleId
-                    if ((key == 'roles') && (operation == 'remove')) {
-                        tempUser.userRoleId = null;
-                    } else if (key == 'roles'){
-                        Integer roleCount = 0;
-                        List<String> roleIds = new List<String>();
-                        for (Object roleId : (List<Object>) value.get(key)){
-                            roleIds.add((String)roleId);
-                            roleCount++;
-                        }
-                        if (roleCount != 1) {
-                            error += 'INVALID:user_must_have_only_one_role;';  
-                            res.statusCode = 400;
-                            break;
-                        } else {
-                            tempUser.userRoleId = roleIds[0];
-                        }
-                    }
-                    
-                    // groups
-                    if (key == 'groups') {
-                        List<GroupMember> groupsToProcess = new List<GroupMember>();
-                        // there has got to be a better way to get the size here but object conversion was driving me crazy
-                        List<Object> groupList = (List<Object>)value.get(key);                                    
-                        if (groupList.size() != 0 ){
-                            for (Object g : (List<Object>) value.get(key)){
-                                Map<String, Object> tempGroupId = (Map<String, Object>) g;
-                                GroupMember gm = new GroupMember();
-                                gm.GroupId = (String) tempGroupId.get('id');
-                                gm.UserOrGroupId = user.id;
-                                groupsToProcess.add(gm);
-                            }
-                        } else {
-                             groupsToProcess = [select id from GroupMember where userOrGroupId =: user.id];
-                        }
-                        if  ((operation == 'remove') || (operation == 'replace')) {
-                            // if replace then remove everything and add back what is specified
+                        else if (op.path == 'groups') {
                             List<GroupMember> currentGroups = [select id, groupId from GroupMember where userOrGroupId =: user.id];
-                            delete currentGroups;                                
+                            delete currentGroups;
                         }
-                        if ((operation == 'add') || (operation == 'replace')){
-                            insert groupsToProcess;
-                        }
-                    }
-                    
-                    // entitlements
-                    // expects list of entitlements to use id key
-                    if (key == 'entitlements'){
-                        System.debug('in entitlements PATCH');
-                        if (operation == 'remove'){
+                        else if (op.path == 'entitlements'){
                             // cannot remove all entitlements
-                            // because you cannot remove profile
                             res.statusCode = 400;
                             error += 'INVALID: Cannot remove all entitlements. Use replace';
                             SCIMException e = new SCIMException();
                             e.setMessage(error);
                             e.setStatusCode(res.statusCode);
-                            throw e;
-                            
                         }
-                        
-                        List<String> profileToProcess = new List<String>();
-                        List<PermissionSetAssignment> permSetsToProcess = new List<PermissionSetAssignment>();                            
-                        String tempEntId;
-                        
-                        List<Object> entsList = (List<Object>)value.get(key);
-                        if (entsList.size() != 0){
-                            for (Object entIter : (List<Object>) value.get(key)){
-                                Map<String, Object> tempEntObj = (Map<String, Object>) entIter;
-                                tempEntId = (String) tempEntobj.get('id');
-                                if (tempEntId.startsWith('00e')) {
-                                    profileToProcess.add(tempEntId);
-                                } else if (tempEntId.startsWith('0PS')) {
-                                    PermissionSetAssignment psa = new PermissionSetAssignment();
-                                    psa.PermissionSetId = tempEntId;
-                                    psa.AssigneeId = user.id;
-                                    permSetsToProcess.add(psa);
-                                } else {
-                                    //bad entitlement id
-                                    res.statusCode = 400;
-                                    error += 'INVALID entitlement id: ' + tempEntId;
-                                    SCIMException e = new SCIMException();
-                                    e.setMessage(error);
-                                    e.setStatusCode(res.statusCode);
-                                    throw e;
-                                }
+                        else if (isUnsupported(op.path)){
+                            res.statusCode = 400;
+                            error += 'UNSUPPORTED_FIELD: ' + op.path;
+                            SCIMException e = new SCIMException();
+                            e.setMessage(error);
+                            e.setStatusCode(400);
+                        }
+                        else if (isNotNillable(op.path)){
+                            res.statusCode = 400;
+                            error += 'FIELD CANNOT BE NULL: ' + op.path;
+                            SCIMException e = new SCIMException();
+                            e.setMessage(error);
+                            e.setStatusCode(400);                            
+                        } else if (scimNameToUserSObjectNameMap.containsKey(op.path)){ // handle custom attributes
+                            ScimSoqlAttributeProcessor customProcessor =  scimNameToUserSObjectNameMap.get(op.path);
+                            tempUser.put(customProcessor.getSoqlAttribute(), null);
+                        }
+                	} else if (op.path == null) {
+                    	res.statusCode = 400;
+                    	error += 'MISING PATH';
+	                    SCIMException e = new SCIMException();
+    	                e.setMessage(error);
+        	            e.setStatusCode(res.statusCode);
+            	    }
+                } else if ((op.op == 'add' )||(op.op == 'replace')){
+                    System.debug(op.value.customFieldValues);
+                    System.debug(op.value.externalUserProperties);                    
+                    System.debug(op.value.otherUserProperties);
+
+                    if (op.value.name != null){
+                        Map<String, String> nameMap = op.value.name;
+                        if (nameMap.containsKey('givenName')) tempUser.FirstName = nameMap.get('givenName');
+                        else if (nameMap.containsKey('familyName')) tempUser.lastName = nameMap.get('familyName');
+                    }
+                    else if (op.value.title != null) tempUser.Title = op.value.title;
+                    else if (op.value.preferredLanguage != null) tempuser.languagelocalekey = op.value.preferredLanguage;
+                    else if (op.value.emailEncodingKey != null) tempuser.emailEncodingKey = op.value.emailEncodingKey;
+                    else if (op.value.locale != null) tempuser.localesidkey = op.value.locale;
+                    else if (op.value.timezone != null) tempuser.timezonesidkey = op.value.timezone;
+                    else if (op.value.employeeNumber != null) tempuser.employeeNumber = op.value.employeeNumber;
+                    else if (op.value.division != null) tempuser.division = op.value.division;
+                    else if (op.value.department != null) tempuser.department = op.value.department;
+                    else if (op.value.nickName != null) tempuser.communityNickname = op.value.nickName;
+                    else if (op.value.password != null) passwordString = op.value.password;
+                    else if (op.value.active != null) tempuser.isActive = op.value.active;
+                    else if (op.value.addresses != null) {
+                        if (op.value.addresses.size() > 1){
+                            error += 'INVALID: User can only have one address';
+                            res.statusCode = 400;
+                        } else {
+                            Map<String, String> tempAddressVal = op.value.addresses[0];
+                            for (String key : tempAddressVal.keySet()){
+                                if (key == 'streetAddress') tempuser.Street = tempAddressVal.get('streetAddress');
+                                if (key == 'locality') tempuser.city = tempAddressVal.get('locality');
+                                if (key == 'region') tempuser.state = tempAddressVal.get('region');
+                                if (key == 'postalCode') tempuser.postalCode = tempAddressVal.get('postalCode');
+                                if (key == 'country') tempuser.country = tempAddressVal.get('country');
+                                
                             }
                         }
+                    }
+                    else if (op.value.emails != null) {
+                        System.debug('PATCHing emails');
+                        if (op.value.emails.size() > 1) {
+                            error += 'INVALID: User can only have one email';
+                            res.statusCode = 400;
+                        } else {
+                            Map<String, String> tempEmailVal = op.value.emails[0];
+                            System.debug(tempEmailVal);
+                            tempUser.Email = tempEmailVal.get('value');
+                        }
+                    }
+                    else if (op.value.roles != null) {
+                        if(op.value.roles.size() > 1){
+                            error += 'INVALID:user_must_have_only_one_role;';  
+                            res.statusCode = 400;
+                        } else {
+                            Map<String, String> tempRoleVal = op.value.roles[0];
+	                        tempuser.userRoleId = tempRoleVal.get('value');
+                        }
+                    }
+                    else if (op.value.manager != null) {
+                        tempuser.managerId = (String) op.value.manager.get('value');
+                    }
+                    else if (op.value.delegatedApprover != null) {
+                        tempuser.delegatedApproverId = (String) op.value.delegatedApprover.get('value');
+                    }
+                    else if (op.value.emails != null) {
+                        if (op.value.emails.size() > 1){
+                            error += 'INVALID: User can only have one email';
+                            res.statusCode = 400;                          
+                        } else {
+                            Map<String, String> tempEmailVal = op.value.emails[0];
+                            tempuser.email = tempEmailVal.get('value');
+                        }
+                    }
+                    else if (op.value.groups != null){
+                        List<GroupMember> groupsToProcess = new List<GroupMember>();
+                        for (Map<String, String> g: op.value.groups){
+                            GroupMember gm = new GroupMember();
+                            gm.GroupId = (String) g.get('value');
+                            gm.UserOrGroupId = user.Id;
+                            groupsToProcess.add(gm);
+                        }
+                        //clean out existing groups if required
+                        if (op.op == 'replace'){
+                            List<GroupMember> currentGroups = [select id, groupId from GroupMember where userOrGroupId =: user.id];
+                            delete currentGroups;
+                        }
+                        insert groupsToProcess;
+                    }
+                    else if (op.value.entitlements != null) {
+                        List<String> profileToProcess = new List<String>();
+                        List<PermissionSetAssignment> permSetsToProcess = new List<PermissionSetAssignment>();           
                         
+                        String tempEntId;
+                        for (Map<String, String> g: op.value.entitlements){
+                            tempEntId = g.get('value');
+                            if (tempEntId.startsWith('00e')) {
+                                profileToProcess.add(tempEntId);
+                            } else if (tempEntId.startsWith('0PS')) {
+                                PermissionSetAssignment psa = new PermissionSetAssignment();
+                                psa.PermissionSetId = tempEntId;
+                                psa.AssigneeId = user.id;
+                                permSetsToProcess.add(psa);
+                            } else {
+                                //bad entitlement id
+                                res.statusCode = 400;
+                                error += 'INVALID entitlement id: ' + tempEntId;
+                                SCIMException e = new SCIMException();
+                                e.setMessage(error);
+                                e.setStatusCode(res.statusCode);
+                                throw e;
+                            }
+                        }
                         if (operation == 'replace'){
                             if (profileToProcess.size() != 0){
                                 if (profileToProcess.size() > 1){
@@ -1791,107 +1768,103 @@ global with sharing class UserResource extends ScimResource {
                                 Database.delete(existingPSA);
                             }
                         }
-                        
-                        if ((operation == 'add') || (operation == 'replace')){
-                            if ((profileToProcess.size() !=0) && (operation == 'add')){
-                                // cannot have multiple profiles
-                                res.statusCode = 400;
-                                error += 'INVALID: cannot have multiple profiles: ' + profileToProcess;
-                                SCIMException e = new SCIMException();
-                                e.setMessage(error);
-                                e.setStatusCode(res.statusCode);
-                                throw e;
-                            }
-                            
-                            // insert new permSets
-                            Database.SaveResult[] newSRs = Database.insert(permSetsToProcess, false);
-                            for (Database.SaveResult thisSR : newSRs) {
-                                if (!thisSR.isSuccess()) {
-                                    for (Database.Error thisError : thisSR.getErrors()) {
-                                        error += 'INVALID:' + thisError.getMessage() + ';';
-                                    }
-                                    res.statusCode = 400;
-                                }
-                            }      
-                        }
-                    }
-                    
-                    // custom fields
-                    if (scimNameToUserSObjectNameMap.containsKey(key)){
-                        Object customFieldValue = scimNameToUserSObjectNameMap.get(key);
-                        ScimSoqlAttributeProcessor customProcessor =  scimNameToUserSObjectNameMap.get(key);
-                        
-                        // NOTE: customFieldValue is always a string, because of a limitation of 
-                        // the parseSimpleObject de-serializing always with getText.
-                        // making it dynamic there makes the method not simple in principle, so
-                        // for simplicity, we just coerce it back to the right type here based on
-                        // the field's type
-                        Schema.SOAPType type = customProcessor.getSOAPType();
-                        if (String.valueOf(type) == 'BOOLEAN'){
-                            System.debug(String.valueOf(type));
-                        }
-                        
-                        // TODO
-                        // should not have to do straigh string comparison
-                        // but cannot figure out why the same code copied from doCreateOrUpdate
-                        // won't work here
-                        if (String.valueOf(type) == 'BOOLEAN') {
-                            tempUser.put(customProcessor.getSoqlAttribute(), Boolean.valueOf(value.get(key)));
-                        }
-                        
-                        else if (String.valueOf(type) == 'DATE') {
-                           tempUser.put(customProcessor.getSoqlAttribute(), Date.valueOf(value.get(key)));
-                        }
-                        else if (String.valueOf(type) == 'DATETIME') {
-                           tempUser.put(customProcessor.getSoqlAttribute(), Datetime.valueOf(value.get(key)));
-                        }
-                        else if (String.valueOf(type) == 'DOUBLE') {
-                           tempUser.put(customProcessor.getSoqlAttribute(), Double.valueOf(value.get(key)));
-                        }
-                        else if (String.valueOf(type) == 'ID') {
-                           tempUser.put(customProcessor.getSoqlAttribute(), String.valueOf(value.get(key)));
-                        }
-                        else if (String.valueOf(type) == 'INTEGER') {
-                           tempUser.put(customProcessor.getSoqlAttribute(), Integer.valueOf(value.get(key)));
-                        }
-                        else if (String.valueOf(type) == 'STRING') {
-                           tempUser.put(customProcessor.getSoqlAttribute(), String.valueOf(value.get(key)));
-                        }
-                        else if (String.valueOf(type) == 'TIME') {
-                           tempUser.put(customProcessor.getSoqlAttribute(), Datetime.valueOf(value.get(key)));
-                        }     
-                        else if (String.valueOf(type) == 'BASE64BINARY') {
-                           tempUser.put(customProcessor.getSoqlAttribute(), EncodingUtil.base64Decode((String) value.get(key)));
-                        }                                                    
-                        else {
-                            error += 'INVALID:unsupported field type for field : ' + key;  
+                        if ((profileToProcess.size() !=0) && (operation == 'add')){
+                            // cannot have multiple profiles
                             res.statusCode = 400;
+                            error += 'INVALID: cannot have multiple profiles: ' + profileToProcess;
+                            SCIMException e = new SCIMException();
+                            e.setMessage(error);
+                            e.setStatusCode(res.statusCode);
+                            throw e;
                         }
+                        
+                        // insert new permSets
+                        Database.SaveResult[] newSRs = Database.insert(permSetsToProcess, false);
+                        for (Database.SaveResult thisSR : newSRs) {
+                            if (!thisSR.isSuccess()) {
+                                for (Database.Error thisError : thisSR.getErrors()) {
+                                    error += 'INVALID:' + thisError.getMessage() + ';';
+                                }
+                                res.statusCode = 400;
+                            }
+                        }      
                     }
-
-                    
-                                /*
-                // email
-                // this likely wont work if email is sent in the value
-                // and not via path
-                // need better complex attribute story
-                if (op.path == 'email'){
-                    if (operation == 'remove'){
-                        tempUser.email = '';
-                    } else {
-                        tempUser.email = (String) op.value[0].get('value');                        
-                    }
-                } else if (op.path == null){
-                    // in case there isnt a path check the values for the attr
-                    for (Map<String, Object> val : op.value){
-                        if (val.keySet().contains('email')){
-                            tempUser.email = (String) val.get('email');                        
-                        }
-                    }
-                */
-                }                    
+                    else if (op.value.customFieldValues != null){ // handle custom attributes
+                        Set<String> keys = op.value.customFieldValues.keySet();
+                        for (String key : keys) {
+                            if (scimNameToUserSObjectNameMap.containsKey(key)){
+                                Object customFieldValue = scimNameToUserSObjectNameMap.get(key);
+                                ScimSoqlAttributeProcessor customProcessor =  scimNameToUserSObjectNameMap.get(key);
+                                                     
+                                // NOTE: customFieldValue is always a string, because of a limitation of 
+                                // the parseSimpleObject de-serializing always with getText.
+                                // making it dynamic there makes the method not simple in principle, so
+                                // for simplicity, we just coerce it back to the right type here based on
+                                // the field's type
+                                Schema.SOAPType type = customProcessor.getSOAPType();
+                                if (String.valueOf(type) == 'BOOLEAN'){
+                                    System.debug(String.valueOf(type));
+                                }
                                 
+                                // TODO
+                                // should not have to do straigh string comparison
+                                // but cannot figure out why the same code copied from doCreateOrUpdate
+                                // won't work here
+                                if (String.valueOf(type) == 'BOOLEAN') {
+                                    tempUser.put(customProcessor.getSoqlAttribute(), Boolean.valueOf(op.value.customFieldValues.get(key)));
+                                }
+                                
+                                else if (String.valueOf(type) == 'DATE') {
+                                    tempUser.put(customProcessor.getSoqlAttribute(), Date.valueOf(op.value.customFieldValues.get(key)));
+                                }
+                                else if (String.valueOf(type) == 'DATETIME') {
+                                    tempUser.put(customProcessor.getSoqlAttribute(), Datetime.valueOf(op.value.customFieldValues.get(key)));
+                                }
+                                else if (String.valueOf(type) == 'DOUBLE') {
+                                    tempUser.put(customProcessor.getSoqlAttribute(), Double.valueOf(op.value.customFieldValues.get(key)));
+                                }
+                                else if (String.valueOf(type) == 'ID') {
+                                    tempUser.put(customProcessor.getSoqlAttribute(), String.valueOf(op.value.customFieldValues.get(key)));
+                                }
+                                else if (String.valueOf(type) == 'INTEGER') {
+                                    tempUser.put(customProcessor.getSoqlAttribute(), Integer.valueOf(op.value.customFieldValues.get(key)));
+                                }
+                                else if (String.valueOf(type) == 'STRING') {
+                                    tempUser.put(customProcessor.getSoqlAttribute(), String.valueOf(op.value.customFieldValues.get(key)));
+                                }
+                                else if (String.valueOf(type) == 'TIME') {
+                                    tempUser.put(customProcessor.getSoqlAttribute(), Datetime.valueOf(op.value.customFieldValues.get(key)));
+                                }     
+                                else if (String.valueOf(type) == 'BASE64BINARY') {
+                                    tempUser.put(customProcessor.getSoqlAttribute(), EncodingUtil.base64Decode((String) op.value.customFieldValues.get(key)));
+                                }                                                    
+                                else {
+                                    error += 'INVALID:unsupported field type for field : ' + key;  
+                                    res.statusCode = 400;
+                                }   
+                            }  
+                        }
+                    }
+                    else if (op.value.otherUserProperties != null) {
+                        if (op.value.otherUserProperties.containsKey(otherSchemaURN + ':alias')){
+                            String tempAlias = (String)op.value.otherUserProperties.get(otherSchemaURN + ':alias');
+                            if (tempAlias.length() > 8){
+                                tempUser.Alias = tempAlias.substring(0,8);
+                            } else tempUser.Alias = tempAlias;
+                        }   
+                    }
+                     
+
+                } else {
+                    res.statusCode = 400;
+                    error += 'INPROPER Operation: ' + op.op;
+                    SCIMException e = new SCIMException();
+                    e.setMessage(error);
+                    e.setStatusCode(res.statusCode);
+                }
+                
                 if (res.statusCode == 201){
+                    System.debug('tempUser: ' + tempUser);
                     update tempUser;
                     if (passwordString != null){
                         System.setPassword(user.id, passwordString);

@@ -7,6 +7,7 @@ global class GroupsResource {
         scimNameToGroupSObjectNameMap = new Map<String, ScimSoqlAttributeProcessor>();
         scimNameToGroupSObjectNameMap.put('id', new StandardAttributeProcessor('Id', Schema.SOAPType.String, false));
         scimNameToGroupSObjectNameMap.put('displayName', new StandardAttributeProcessor('Name', Schema.SOAPType.String, false));
+        scimNameToGroupSObjectNameMap.put('type', new StandardAttributeProcessor('Type', Schema.SOAPType.String, false));        
         scimNameToGroupSObjectNameMap.put('members', new GroupMembersAttributeProcessor());
         
         scimNameToGroupSObjectNameMap.put('meta', new StandardAttributeProcessor('CreatedDate,LastModifiedDate', Schema.SOAPType.String, true));
@@ -44,12 +45,13 @@ global class GroupsResource {
             String startIndex = req.params.get('startIndex');
             String count = req.params.get('count');
             
-            QueryHolder groupQueryHolder = FilterTranslator.buildAttributeQueryString(attributes, filter, startIndex, count, scimNameToGroupSObjectNameMap, 'Group', ' Type = \'Regular\' ', null, null);
+            QueryHolder groupQueryHolder = FilterTranslator.buildAttributeQueryString(attributes, filter, startIndex, count, scimNameToGroupSObjectNameMap, 'Group', ' Type = \'Regular\' OR Type = \'Queue\' ', null, null);
             
             String countSoql = groupQueryHolder.getCountQuery();
             String actualSoql = groupQueryHolder.getActualQuery();
             
             Integer total = ScimResource.countQuery(countSoql);
+            System.debug(actualSoql);
             List<Group> groups = Database.query(actualSoql);
 
             if ( !groups.isEmpty()  ) {

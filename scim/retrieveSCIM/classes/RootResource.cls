@@ -1,4 +1,4 @@
-@RestResource(urlMapping='/scim/v2')
+@RestResource(urlMapping='/scim/v2/*')
 global class RootResource {
     
     @HttpGet
@@ -18,7 +18,8 @@ global class RootResource {
             gen.writeStringField('Users', '/services/apexrest/scim/v2/Users');                       
             gen.writeStringField('Groups', '/services/apexrest/scim/v2/Groups');
             gen.writeStringField('Roles', '/services/apexrest/scim/v2/Roles');        
-            gen.writeStringField('Entitlements', '/services/apexrest/scim/v2/Entitlements');   
+            gen.writeStringField('Entitlements', '/services/apexrest/scim/v2/Entitlements');
+            gen.writeStringField('ResourceTypes', '/services/apexrest/scim/v2/ResourceTypes');
             gen.writeStringField('ServiceProviderConfigs', '/services/apexrest/scim/v2/ServiceProviderConfigs');                      
             gen.writeStringField('Schemas', '/services/apexrest/scim/v2/Schemas');   
         gen.writeEndObject();

@@ -40,9 +40,6 @@ global class GroupResource extends ScimResource {
 
     }
 
-    // TODO Changes to assumptions about PATCH have broken this completely
-    // TODO Fix
-    // assumes path = members
     @HttpPatch
     global static void doPatch() {
     
@@ -71,29 +68,16 @@ global class GroupResource extends ScimResource {
         try {
             for (GroupPatchParser.Operations op : groupPP.Operations){
                 String operation = op.op;
-                // Group Patch expects either path=members
-                // or a value value of "members":"ID"
-                // everything else will not be parsed                
-                if (op.value == null) {
-                    res.statusCode = 400;
-                    res.responseBody = SCIMError.serializeError(res.statusCode, 'Improper Operation. value array must be present', req.headers.containsKey('X-Prettyprint'));
-                    Database.rollback(sp);
-                    return;
-                }
-               if (op.path != 'members'){
-                    res.statusCode = 400;
-                    res.responseBody = SCIMError.serializeError(res.statusCode, 'Improper Operation. path must be members only', req.headers.containsKey('X-Prettyprint'));
-                    Database.rollback(sp);
-                    return;
-                }
-                
-                // build list of member IDs
+                String path = op.path;
                 List<GroupMember> groupMembersToBeProcessed = new List<GroupMember>();
-                for (GroupPatchParser.Value val : op.value){
-                    GroupMember gm = new GroupMember();
-                    gm.UserOrGroupId = val.value;
-                    gm.GroupId = groupId;
-                    groupMembersToBeProcessed.add(gm);
+                
+                if (op.value.members != null) {
+                    for (Map<String, String> mapVal : op.value.members){
+                        GroupMember gm = new GroupMember();
+                        gm.UserOrGroupId = mapVal.get('value');
+                        gm.GroupId = groupId;
+                        groupMembersToBeProcessed.add(gm);
+                    }
                 }
                 
                 // if operation is replace, then remove all assignemnts and reassign via add
@@ -252,6 +236,9 @@ global class GroupResource extends ScimResource {
                 gen.writeStringField('id', g.id);            
                 if (shouldSerialize('displayName', attributes)) {
                     gen.writeStringField('displayName', g.name);
+                }
+                if (shouldSerialize('type', attributes)) {
+                    gen.writeStringField('type', g.type);
                 }
                 
                 if (shouldSerialize('members', attributes)) {

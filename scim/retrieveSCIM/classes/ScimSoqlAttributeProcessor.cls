@@ -1,6 +1,6 @@
 public interface ScimSoqlAttributeProcessor {
 
-    // Gets back all the soql attributes in a comman separate string.
+    // Gets back all the soql attributes in a comma separate string.
     String getSoqlAttribute();
     
     // Gets back all the soql attributes in a list of strings.

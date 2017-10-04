@@ -31,7 +31,7 @@ global class EntitlementResource extends ScimResource {
         Boolean isFound = false;
         String entitlementType ='';
         String entitlementId = uriParts[numParts];
-        System.debug('entId: ' + entitlementId);
+
         if (entitlementId.startsWith('00e')) {
             isFound = !([select ID from Profile where ID = :entitlementId].isEmpty());
             entitlementType = 'profile';
@@ -40,7 +40,7 @@ global class EntitlementResource extends ScimResource {
             isFound = !([select ID from PermissionSet where ID = :entitlementId].isEmpty());
             entitlementType = 'permissionSet';
         }
-        System.debug('entType: ' + entitlementType);
+
         if (numParts > 4 || !isFound) { 
             res.statusCode = 404;
             res.addHeader('Content-Type', 'application/json');
@@ -55,27 +55,24 @@ global class EntitlementResource extends ScimResource {
             res.responseBody = SCIMError.serializeError(res.statusCode, 'Improper Schema.', req.headers.containsKey('X-Prettyprint'));
             return;
         }
-        
+
         Savepoint sp = Database.setSavepoint();
         try {
-            for (EntitlementPatchParser.Operations op : entitlementPP.operations){
+            for (EntitlementPatchParser.Operations op : entitlementPP.Operations){
                 String operation = op.op;
-                // Entitlement Patch expects path to be members
-                // and value must me list of values
-                // everything else will not be parsed
                 String path = op.path;
                 List<User> usersToBeProcessed = new List<User>();
-                if (path == 'members') {
-                    for (EntitlementPatchParser.Value val : op.value){
+                
+                if (op.value.members != null) {
+                    for (Map<String, String> mapVal : op.value.members){
                         User tempUser = new User();
-                        tempUser.Id = (id)val.value;
+                        tempUser.Id = mapVal.get('value');
                         usersToBeProcessed.add(tempUser);                        
                     }                    
                 }
 
                 for (User tempUser : usersToBeProcessed){
                     User u = [select id, userRoleId from User where id = :tempUser.id limit 1];
-                    System.debug('entType: ' + entitlementType + ' op: ' + operation);
                     // process profile assignments
                     if (entitlementType == 'profile'){
                         if (operation == 'add'){
@@ -88,7 +85,6 @@ global class EntitlementResource extends ScimResource {
                             update u;
                         } else if (operation == 'remove'){
                             //not meaningful
-                            //double checking
                             ScimException scimEx = new ScimException('Cannot remove a profile from an existing user');
                             scimEx.setStatusCode(400);
                             throw scimEx;

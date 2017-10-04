@@ -5,7 +5,7 @@ Pilot Apex implementation of SCIM v2 client
 
 Overview
 --------
-This project is a sample implementation of SCIM v2. It is the codebase that was used during the SCIM v2 Interop for CIS 2016.
+This project is a sample implementation of SCIM v2.
 
 Getting Started
 ---------------
@@ -18,13 +18,14 @@ This implementation supports the following endpoints:
 * Groups: /services/apexrest/scim/v2/Groups
 * Roles: /services/apexrest/scim/v2/Roles
 * Entitlements: /services/apexrest/scim/v2/Entitlements
+* ResourceTypes: /services/apexrest/scim/v2/ResourceTypes
 * ServiceProviderConfigs: /services/apexrest/scim/v2/ServiceProviderConfigs
 * Schemas: /services/apexrest/scim/v2/Schemas
 
 This implementation supports:
 * GET against all endpoints
-* POST and PUT against /Users
-* /Users also has preliminary support for PATCH as does /Groups and /Entitlements - Use with caution. Keep in mind this implementation does not support filters in path attributes of PATCH operations
+* PATCH, POST,PUT against all endpoints
+* PATCH follows the PATCH Simple pattern and does not support filters
 * POST-based search against /Users
 
 Creating External Users

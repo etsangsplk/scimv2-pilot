@@ -4,13 +4,13 @@ public class RolePatchParser {
     public List<Operations> Operations;
     
     public class Value {
-        public String value;
+        public List<Map<String, String>> members;
     }
     
     public class Operations {
         public String op;
         public String path;
-        public List<Value> value;
+        public Value value;
     }
     
     

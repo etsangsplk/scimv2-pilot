@@ -81,22 +81,17 @@ global class RoleResource extends ScimResource {
         try {
             for (RolePatchParser.Operations op : rolePP.Operations){
                 String operation = op.op;
-                // Role Patch expects either path=members
-                // everything else will not be parsed
-                
+                String path = op.path;
                 List<User> usersToBeProcessed = new List<User>();
-                for (RolePatchParser.Value val : op.value){
-                    User tempUser = new User();
-                    if (op.path != 'members'){
-                        res.statusCode = 400;
-                        res.responseBody = SCIMError.serializeError(res.statusCode, 'Improper Operation. path must be members', req.headers.containsKey('X-Prettyprint'));
-                        Database.rollback(sp);
-                        return;
+                
+                if (op.value.members != null) {
+                    for (Map<String, String> mapVal : op.value.members){
+                        User tempUser = new User();
+                        tempUser.Id = mapVal.get('value');
+                        usersToBeProcessed.add(tempUser);
                     }
-                    
-                    tempUser.Id = val.value;
-                    usersToBeProcessed.add(tempUser);
                 }
+
                 for (User tempUser : usersToBeProcessed){
                     User u = [select id, userRoleId from User where id = :tempUser.id limit 1];
                     if (operation == 'add'){
