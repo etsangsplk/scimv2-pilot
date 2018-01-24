@@ -7,7 +7,7 @@ public class UserPatchParserUntyped {
         public String path;
         // complex attrbutes still may not work here
         public Map<String, Object> value;
-    }
+    }    
     
     public UserPatchParserUntyped(String json){
         Map<String, Object> m = (Map<String, Object>) System.JSON.deserializeUntyped(json);
@@ -28,8 +28,9 @@ public class UserPatchParserUntyped {
             tempOp.path = (String) untypedOp.get('path');
             if (tempOp.path != null) {
                 if (tempOp.op != 'remove'){
+                    	System.debug('Path:' + tempOp.path + ' Value: ' + untypedOp.get('value'));
                     if (tempOp.path == 'active') {
-                        tempOp.value = new Map<String, Boolean>{'active' => (Boolean) untypedOp.get('value')};
+                        tempOp.value = new Map<String, Object>{'active' => (Object) untypedOp.get('value')};
                     } else if (tempOp.path == 'entitlements'){
                         tempOp.value = new Map<String, Object>{'entitlements' => (Object) untypedOp.get('value')};
                     } else {

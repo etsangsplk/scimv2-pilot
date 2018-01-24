@@ -8,14 +8,16 @@ public interface ScimSoqlAttributeProcessor {
     
     // Filter Generations.
     String getEQclause(String value);
+    String getNEclause(String value);
     String getCOclause(String value);
     String getSWclause(String value);
+    String getEWclause(String value);
     String getGTclause(String value);
     String getGEclause(String value);
     String getLTclause(String value);
     String getLEclause(String value);
     String getPRclause(String value);
-    
+  
     // Is complex, i.e. not directly queryable
     Boolean isComplex();
     

@@ -46,12 +46,20 @@ public class PhotosAttributeProcessor implements ScimSoqlAttributeProcessor{
     public String getEQclause(String value) {
         return ' ( User.FullPhotoUrl = \'' + value + '\' OR User.SmallPhotoUrl = \'' + value + '\') ';
     }
+
+    public String getNEclause(String value) {
+        return ' ( User.FullPhotoUrl != \'' + value + '\' OR User.SmallPhotoUrl != \'' + value + '\') ';
+    }
     
     public String getCOclause(String value) {
         throw new IllegalFilterException('Unsupported comparison for photos field');
     }
     
     public String getSWclause(String value) {
+        throw new IllegalFilterException('Unsupported comparison for photos field');
+    }
+
+    public String getEWclause(String value) {
         throw new IllegalFilterException('Unsupported comparison for photos field');
     }
     

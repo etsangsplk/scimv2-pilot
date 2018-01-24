@@ -46,6 +46,8 @@ public class FilterTranslator {
         // 'ge' [ >= token]
         // 'lt' [ < token]
         // 'le' [ <= token]
+        // 'ne' [ != token]
+        // 'ew' [ like '%token']
         // -> 3
            
         // 3 = end of expression
@@ -86,6 +88,8 @@ public class FilterTranslator {
                     tempToken.equals('gt') ||
                     tempToken.equals('ge') ||
                     tempToken.equals('lt') ||
+                    tempToken.equals('ne') ||
+                    tempToken.equals('ew') ||
                     tempToken.equals('le')) {
                         operator = tempToken;                    
                         state = 2;
@@ -139,6 +143,14 @@ public class FilterTranslator {
                 } 
                 else if (operator.equals('le')) {
                     parsedString += currentProcessor.getLEclause(strippedToken);
+                    state = 3;
+                }
+                else if (operator.equals('ne')) {
+                    parsedString += currentProcessor.getNEclause(strippedToken);
+                    state = 3;
+                }
+                else if (operator.equals('ew')) {
+                    parsedString += currentProcessor.getEWclause(strippedToken);
                     state = 3;
                 }
                 else {
@@ -336,15 +348,15 @@ public class FilterTranslator {
         }
         
         String countSoql;
-        if (extraClause != null) {
-            soql += ' from ' + table + ' where ( ' + extraClause + ' ) ';
-            countSoql = 'select count(Id) from ' + table + ' where ( ' + extraClause + ' ) ';
-        }
-        else {
-            soql += ' from ' + table;
-            countSoql = 'select count(Id) from ' + table + ' '; 
-        }
-        if (filter != NULL && filter.length() != 0) {
+        soql += ' from ' + table;
+        countSoql = 'select count(Id) from ' + table + ' '; 
+
+        if (filter != NULL && filter.length() != 0 && extraClause != null) {
+            FilterTranslator translator = new FilterTranslator(filter, scimNameToSObjectNameMap);
+            String thisFilter = ' WHERE ( ' + translator.getTranslatedFilter() + ' AND ' +  extraClause + ' ) ';
+            soql += thisFilter;
+            countSoql += thisFilter;
+        } else if (filter != NULL && filter.length() != 0) {
             FilterTranslator translator = new FilterTranslator(filter, scimNameToSObjectNameMap);
             String thisFilter = ' WHERE ( ' + translator.getTranslatedFilter() + ' ) ';
             soql += thisFilter;

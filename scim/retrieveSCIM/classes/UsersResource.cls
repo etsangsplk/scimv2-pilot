@@ -1,6 +1,8 @@
 @RestResource(urlMapping='/scim/v2/Users')
 global class UsersResource extends ScimResource {
 
+    final private static Set<String> queriableUserTypes = new Set<String>{'Standard', 'PowerPartner','PowerCustomerSuccess','CustomerSuccess','SelfService','CspLitePortal', 'CsnOnly'};
+
     private static Blob serializeUsers(List<User> users, Integer total, String startIndex, String count, String attributes, String excludedAttributes, String host, boolean prettyPrint) {
         JSONGenerator gen = JSON.createGenerator(prettyPrint);
         gen.writeStartObject();
@@ -70,7 +72,10 @@ global class UsersResource extends ScimResource {
             }
 
 //            QueryHolder queryHolder = FilterTranslator.buildAttributeQueryString(attributes, filter, startIndex, count, UserResource.scimNameToUserSObjectNameMap, 'User',  'isActive = true', null, null);
-            QueryHolder queryHolder = FilterTranslator.buildAttributeQueryStringWithExcluded(attributes, excludedAttributes, filter, startIndex, count, UserResource.scimNameToUserSObjectNameMap, 'User', null, null, null);
+//            QueryHolder queryHolder = FilterTranslator.buildAttributeQueryStringWithExcluded(attributes, excludedAttributes, filter, startIndex, count, UserResource.scimNameToUserSObjectNameMap, 'User', null, null, null);
+// following added to filter out internal-style users e.g. automatedProcess
+            String queryUserType = 'userType in (\'' + String.join(new List<String>(queriableUserTypes), '\',\'') + '\')';
+            QueryHolder queryHolder = FilterTranslator.buildAttributeQueryStringWithExcluded(attributes, excludedAttributes, filter, startIndex, count, UserResource.scimNameToUserSObjectNameMap, 'User', queryUserType, null, null);
             Integer total = ScimResource.countQuery(queryHolder.getCountQuery());
             users = Database.query(queryHolder.getActualQuery());
 

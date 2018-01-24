@@ -44,6 +44,10 @@ public class PermsetMembersAttributeProcessor implements ScimSoqlAttributeProces
     public String getEQclause(String value) {
         return ' ( PermissionSet.Id IN ( Select PermissionSetId From PermissionSetAssignment where AssigneeId = \'' + value + '\') ) ';        
     }
+
+    public String getNEclause(String value) {
+        return ' ( PermissionSet.Id IN ( Select PermissionSetId From PermissionSetAssignment where AssigneeId != \'' + value + '\') ) ';        
+    }
     
     public String getCOclause(String value) {
         throw new IllegalFilterException('Unsupported comparison for members field');
@@ -52,7 +56,11 @@ public class PermsetMembersAttributeProcessor implements ScimSoqlAttributeProces
     public String getSWclause(String value) {
         throw new IllegalFilterException('Unsupported comparison for members field');
     }
-    
+
+    public String getEWclause(String value) {
+        throw new IllegalFilterException('Unsupported comparison for members field');
+    }    
+
     public String getGTclause(String value) {
         throw new IllegalFilterException('Unsupported comparison for members field');
     }

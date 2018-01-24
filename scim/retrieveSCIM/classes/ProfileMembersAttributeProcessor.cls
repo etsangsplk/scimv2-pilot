@@ -44,12 +44,20 @@ public class ProfileMembersAttributeProcessor implements ScimSoqlAttributeProces
     public String getEQclause(String value) {
         return ' ( Profile.Id IN ( Select ProfileId From User where Id = \'' + value + '\') ) ';        
     }
+
+    public String getNEclause(String value) {
+        return ' ( Profile.Id IN ( Select ProfileId From User where Id != \'' + value + '\') ) ';        
+    }
     
     public String getCOclause(String value) {
         throw new IllegalFilterException('Unsupported comparison for members field');
     }
     
     public String getSWclause(String value) {
+        throw new IllegalFilterException('Unsupported comparison for members field');
+    }
+
+    public String getEWclause(String value) {
         throw new IllegalFilterException('Unsupported comparison for members field');
     }
     

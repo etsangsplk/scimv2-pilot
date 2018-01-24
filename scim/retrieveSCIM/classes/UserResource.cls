@@ -14,6 +14,7 @@ global with sharing class UserResource extends ScimResource {
     
     final private static Set<String> portalUserTypes = new Set<String>();
     
+    final private static Set<String> queriableUserTypes = new Set<String>{'Standard', 'PowerPartner','PowerCustomerSuccess','CustomerSuccess','SelfService','CspLitePortal', 'CsnOnly'};
     final public static Set<String> unsupportedAttrs = new Set<String>{'middlename', 'honorificPrefix', 'honorificSuffix', 'costCenter'};
     final public static Set<String> readOnlyAttrs = new Set<String>{'displayName', 'profileURL', 'photos', 'userType', 'id', 'formatted', 'organization'};
     final public static Set<String> notNillableAttrs = new Set<String>{'alias','password', 'emails'};
@@ -1394,8 +1395,10 @@ global with sharing class UserResource extends ScimResource {
                     }
                     
 //                    String soql = FilterTranslator.buildAttributeQueryString(attributes, filter, null, null, scimNameToUserSObjectNameMap, 'User',  'isActive = true', null, null).getActualQuery();
-                    String soql = FilterTranslator.buildAttributeQueryStringWithExcluded(attributes, excludedAttributes, filter, null, null, scimNameToUserSObjectNameMap, 'User', null, null, null).getActualQuery();
-                    users = Database.query(soql);
+// following added to filter out internal-style users e.g. automatedProcess
+                    String queryUserType = 'userType in (\'' + String.join(new List<String>(queriableUserTypes), '\',\'') + '\')';
+                    QueryHolder queryHolder = FilterTranslator.buildAttributeQueryStringWithExcluded(attributes, excludedAttributes, filter, null, null, scimNameToUserSObjectNameMap, 'User', queryUserType, null, null);
+                    users = Database.query(queryHolder.getActualQuery());
 
                     if ( !users.isEmpty()  ) {
                         res.addHeader('Location', 'https://' + host + '/services/apexrest/scim/v2/Users/' + users.get(0).Id);   

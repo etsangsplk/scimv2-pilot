@@ -44,6 +44,10 @@ public class NetworkAttributeProcessor implements ScimSoqlAttributeProcessor{
     public String getEQclause(String value) {
         return ' ( User.Id IN ( Select MemberId From NetworkMember where NetworkId = \'' + value + '\' OR Network.Name = \'' + value + '\') ) ';        
     }
+
+    public String getNEclause(String value) {
+        return ' ( User.Id IN ( Select MemberId From NetworkMember where NetworkId != \'' + value + '\' OR Network.Name = \'' + value + '\') ) ';        
+    }
     
     public String getCOclause(String value) {
 	return ' ( User.Id IN ( Select MemberId From NetworkMember where Network.Name LIKE \'%' + value + '%\') ) ';        
@@ -53,6 +57,11 @@ public class NetworkAttributeProcessor implements ScimSoqlAttributeProcessor{
     public String getSWclause(String value) {
         throw new IllegalFilterException('Unsupported comparison for groups field');
     }
+
+    public String getEWclause(String value) {
+        throw new IllegalFilterException('Unsupported comparison for groups field');
+    }
+
     
     public String getGTclause(String value) {
         throw new IllegalFilterException('Unsupported comparison for groups field');

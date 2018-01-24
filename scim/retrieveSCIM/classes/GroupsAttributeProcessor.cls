@@ -45,11 +45,19 @@ public class GroupsAttributeProcessor implements ScimSoqlAttributeProcessor{
         return ' ( User.Id IN ( Select UserOrGroupId From GroupMember where GroupId = \'' + value + '\') ) ';        
     }
     
+    public String getNEclause(String value) {
+        return ' ( User.Id IN ( Select UserOrGroupId From GroupMember where GroupId != \'' + value + '\') ) ';        
+    }
+
     public String getCOclause(String value) {
         throw new IllegalFilterException('Unsupported comparison for groups field');
     }
     
     public String getSWclause(String value) {
+        throw new IllegalFilterException('Unsupported comparison for groups field');
+    }
+
+    public String getEWclause(String value) {
         throw new IllegalFilterException('Unsupported comparison for groups field');
     }
     

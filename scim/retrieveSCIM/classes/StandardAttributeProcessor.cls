@@ -46,6 +46,10 @@ public class StandardAttributeProcessor implements ScimSoqlAttributeProcessor{
     public String getEQclause(String value) {
         return (' = ' + quoteIfNecessary(value));
     }
+
+    public String getNEclause(String value) {
+        return (' != ' + quoteIfNecessary(value));
+    }   
     
     public String getCOclause(String value) {
         return (' like \'%' + value + '%\'');
@@ -55,6 +59,10 @@ public class StandardAttributeProcessor implements ScimSoqlAttributeProcessor{
         return (' like \'' + value + '%\'');
     }
     
+    public String getEWclause(String value) {
+        return (' like \'%' + value + '\'');
+    }
+
     public String getGTclause(String value) {
         return (' > ' + quoteIfNecessary(value));
     }
@@ -73,8 +81,8 @@ public class StandardAttributeProcessor implements ScimSoqlAttributeProcessor{
     
     public String getPRclause(String value) {
         return ' != NULL';
-    }
-
+    } 
+    
     public Boolean isSemijoin() {
         return false;
     }

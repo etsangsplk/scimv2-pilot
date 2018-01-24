@@ -46,12 +46,20 @@ public class PhoneNumbersAttributeProcessor implements ScimSoqlAttributeProcesso
     public String getEQclause(String value) {
         return ' ( User.Phone = \'' + value + '\' OR User.MobilePhone = \'' + value + '\' OR User.Fax = \'' + value + '\') ';
     }
+
+    public String getNEclause(String value) {
+        return ' ( User.Phone != \'' + value + '\' OR User.MobilePhone != \'' + value + '\' OR User.Fax != \'' + value + '\') ';
+    }
     
     public String getCOclause(String value) {
         throw new IllegalFilterException('Unsupported comparison for entitlements field');
     }
     
     public String getSWclause(String value) {
+        throw new IllegalFilterException('Unsupported comparison for entitlements field');
+    }
+
+    public String getEWclause(String value) {
         throw new IllegalFilterException('Unsupported comparison for entitlements field');
     }
     

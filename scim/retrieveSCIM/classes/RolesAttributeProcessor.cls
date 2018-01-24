@@ -46,12 +46,20 @@ public class RolesAttributeProcessor implements ScimSoqlAttributeProcessor{
     public String getEQclause(String value) {
         return ' ( User.UserRoleId = \'' + value + '\' ) ';        
     }
+
+    public String getNEclause(String value) {
+        return ' ( User.UserRoleId != \'' + value + '\' ) ';        
+    }
     
     public String getCOclause(String value) {
         throw new IllegalFilterException('Unsupported comparison for role field');
     }
     
     public String getSWclause(String value) {
+        throw new IllegalFilterException('Unsupported comparison for role field');
+    }
+
+    public String getEWclause(String value) {
         throw new IllegalFilterException('Unsupported comparison for role field');
     }
     

@@ -51,12 +51,25 @@ public class EntitlementsAttributeProcessor implements ScimSoqlAttributeProcesso
             return ' ( User.ProfileId = \'' + value + '\' ) ';        
         }
     }
-    
+
+    public String getNEclause(String value) {
+        if (value.startsWith('0PS')) {
+            return ' ( User.Id IN ( Select AssigneeId From PermissionSetAssignment where PermissionSetId != \'' + value + '\') )';        
+        }
+        else {
+            return ' ( User.ProfileId != \'' + value + '\' ) ';        
+        }
+    }
+        
     public String getCOclause(String value) {
         throw new IllegalFilterException('Unsupported comparison for entitlements field');
     }
     
     public String getSWclause(String value) {
+        throw new IllegalFilterException('Unsupported comparison for entitlements field');
+    }
+
+    public String getEWclause(String value) {
         throw new IllegalFilterException('Unsupported comparison for entitlements field');
     }
     

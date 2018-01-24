@@ -44,12 +44,20 @@ public class RoleMembersAttributeProcessor implements ScimSoqlAttributeProcessor
     public String getEQclause(String value) {
         return ' ( UserRole.Id IN ( Select Id From UserRole where ID = \'' + value + '\') ) ';        
     }
+
+    public String getNEclause(String value) {
+        return ' ( UserRole.Id IN ( Select Id From UserRole where ID != \'' + value + '\') ) ';        
+    }
     
     public String getCOclause(String value) {
         throw new IllegalFilterException('Unsupported comparison for members field');
     }
     
     public String getSWclause(String value) {
+        throw new IllegalFilterException('Unsupported comparison for members field');
+    }
+
+    public String getEWclause(String value) {
         throw new IllegalFilterException('Unsupported comparison for members field');
     }
     
