@@ -39,13 +39,10 @@
         <members>ServiceProviderConfigsResource</members>
         <members>StandardAttributeProcessor</members>
         <members>UserDotSearchResource</members>
-        <members>UserPatchParser</members>
-        <members>UserPatchParserUntyped</members>
         <members>UserPatchResource</members>
-        <members>UserPatchSimpleParser</members>
         <members>UserResource</members>
         <members>UsersResource</members>
         <name>ApexClass</name>
     </types>
-    <version>40.0</version>
+    <version>41.0</version>
 </Package>
