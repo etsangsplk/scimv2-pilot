@@ -9,6 +9,13 @@ global class SchemasResource {
     private static Boolean doOrgCustom = false;
     private static Boolean doOther = false;
     private static Boolean doCommunities = false;
+    private static Boolean doIndividual = false;
+    private static Boolean doIndividualExtension = false;
+
+    // if Individual is enabled return schema. Check for enablement. Throw exception if not enabled and included
+    // SELECT DeveloperName FROM EntityDefinition WHERE DeveloperName = 'Individual'
+    // need a schema for Individual: urn:salesforce:schemas:extension:individual:1.0
+    // and a schema for custom fields to individual urn:salesforce:schemas:extension:individual:orgid
     
     @HttpGet
     global static void doGet() {
@@ -18,42 +25,66 @@ global class SchemasResource {
         Integer numParts = uriParts.size() - 1;  
         String schemaType = uriParts[numParts];
 
-        if (schemaType.equalsIgnoreCase('urn:ietf:params:scim:schemas:core:2.0:User') || schemaType.equalsIgnoreCase('User')) {
-            doUser = true;
-        } else if (schemaType.equalsIgnoreCase('urn:ietf:params:scim:schemas:core:2.0:Group') || schemaType.equalsIgnoreCase('Group')) {
-            doGroup = true;
-        } else if (schemaType.equalsIgnoreCase('urn:salesforce:schemas:extension:1.0:Entitlement') || schemaType.equalsIgnoreCase('Entitlement')) {
-            doEntitlement = true;
-        } else if (schemaType.equalsIgnoreCase('urn:salesforce:schemas:extension:1.0:Role') || schemaType.equalsIgnoreCase('Role')) {
-            doRole = true;
-        } else if (schemaType.equalsIgnoreCase('urn:ietf:params:scim:schemas:extension:enterprise:2.0:User')){
-            doEnterprise = true;
-        } else if (schemaType.equalsIgnoreCase('urn:salesforce:schemas:extension:external:1.0')){
-            doExternal = true;
-        } else if (schemaType.equalsIgnoreCase('urn:salesforce:schemas:extension:' + UserInfo.getOrganizationId())){
-            doOrgCustom = true;
-        } else if (schemaType.equalsIgnoreCase('urn:salesforce:schemas:1.0:' + UserInfo.getOrganizationId())){
-            doOther = true;
-        } else if(schemaType.equalsIgnoreCase('urn:salesforce:schemas:extension:communities:1.0')){
-            doCommunities = true;
+        // is Individual enabled?
+        Boolean individualEnabled = false;
+        Integer indCount = [select count() FROM EntityDefinition WHERE DeveloperName = 'Individual' ];
+        if (indCount == 1) {
+            individualEnabled = true;
         }
+        try {
 
-        // do everything if nothing specified
-        if (numParts == 3) {
-            doUser = true;
-            doGroup = true;
-            doEntitlement = true;
-            doRole = true;
-            doEnterprise = true;
-            doExternal = true;
-            doOrgCustom = true;
-            doOther = true;
-            doCommunities = true;
-        }
-                                                   
-        res.addHeader('Content-Type', 'application/json');
-        res.statusCode = 200; 
-        res.responseBody = serializeSchemas(req.headers.containsKey('X-Prettyprint'));
+            // do everything if nothing specified
+            if (numParts == 3) {
+                doUser = true;
+                doGroup = true;
+                doEntitlement = true;
+                doRole = true;
+                doEnterprise = true;
+                doExternal = true;
+                doOrgCustom = true;
+                doOther = true;
+                doCommunities = true;
+
+                if (individualEnabled) {
+                    doIndividual = true;
+                    doIndividualExtension = true;
+                }
+            } else if (schemaType.equalsIgnoreCase('urn:ietf:params:scim:schemas:core:2.0:User') || schemaType.equalsIgnoreCase('User')) {
+                doUser = true;
+            } else if (schemaType.equalsIgnoreCase('urn:ietf:params:scim:schemas:core:2.0:Group') || schemaType.equalsIgnoreCase('Group')) {
+                doGroup = true;
+            } else if (schemaType.equalsIgnoreCase('urn:salesforce:schemas:extension:2.0:Entitlement') || schemaType.equalsIgnoreCase('Entitlement')) {
+                doEntitlement = true;
+            } else if (schemaType.equalsIgnoreCase('urn:salesforce:schemas:extension:2.0:Role') || schemaType.equalsIgnoreCase('Role')) {
+                doRole = true;
+            } else if (schemaType.equalsIgnoreCase('urn:ietf:params:scim:schemas:extension:enterprise:2.0:User')){
+                doEnterprise = true;
+            } else if (schemaType.equalsIgnoreCase('urn:salesforce:schemas:extension:2.0:external')){
+                doExternal = true;
+            } else if (schemaType.equalsIgnoreCase('urn:salesforce:schemas:extension:' + UserInfo.getOrganizationId())){
+                doOrgCustom = true;
+            } else if (schemaType.equalsIgnoreCase('urn:salesforce:schemas:extension:2.0')){
+                doOther = true;
+            } else if(schemaType.equalsIgnoreCase('urn:salesforce:schemas:extension:2.0:communities')){
+                doCommunities = true;
+            } else if(schemaType.equalsIgnoreCase('urn:salesforce:schemas:extension:2.0:Individual')){
+                doIndividual = true;
+            } else if((individualEnabled) && (schemaType.equalsIgnoreCase('urn:salesforce:schemas:extension:2.0:Individual:' + UserInfo.getOrganizationId()))){
+                doIndividualExtension = true;
+            } else {
+                throw new ScimException('Invalid Schema specified');
+            }
+        
+            res.addHeader('Content-Type', 'application/json');
+            res.statusCode = 200; 
+            res.responseBody = serializeSchemas(req.headers.containsKey('X-Prettyprint'));
+                
+        } catch (ScimException ex) {
+            res.addHeader('Content-Type', 'application/json');
+            res.statusCode = 400;
+            res.responseBody = SCIMError.serializeError(res.statusCode, ex.getMessage(), req.headers.containsKey('X-Prettyprint'));
+            return;
+        }   
 
     }  
     
@@ -88,7 +119,7 @@ global class SchemasResource {
             gen.writeFieldName('Resources');
                 gen.writeStartArray();            
         }
-        
+    
         if (doUser){
             System.debug('in doUser');
             if (totalResults > 1){
@@ -117,7 +148,7 @@ global class SchemasResource {
                     gen.writeStringField('type', 'string');   
                     gen.writeBooleanField('multiValued', false); 
                     gen.writeStringField('description', 'Unique identifier for the Resource as defined by the Service Consumer');
-            gen.writeStringField('mutability', 'readWrite');                            
+                    gen.writeStringField('mutability', 'readWrite');                            
                     gen.writeBooleanField('required', false); 
                     gen.writeBooleanField('caseExact', true); 
                 gen.writeEndObject();
@@ -127,7 +158,7 @@ global class SchemasResource {
                     gen.writeStringField('type', 'string');   
                     gen.writeBooleanField('multiValued', false); 
                     gen.writeStringField('description', 'Unique identifier for the User'); 
-            gen.writeStringField('mutability', 'readWrite');                            
+                    gen.writeStringField('mutability', 'readWrite');                            
                     gen.writeBooleanField('required', true); 
                     gen.writeBooleanField('caseExact', false); 
                 gen.writeEndObject();
@@ -679,12 +710,10 @@ global class SchemasResource {
                     gen.writeStringField('resourceType', 'Schema');
                     gen.writeStringField('location', base + path + 'Schemas/urn:ietf:params:scim:schemas:core:2.0:User');
                 gen.writeEndObject();
-        if (totalResults > 1){
-                gen.writeEndObject();  
+            if (totalResults > 1){
+                    gen.writeEndObject();  
+            }
         }
-
-    }
-    
         if (doGroup){
             if (totalResults > 1){
                 gen.writeStartObject();
@@ -761,10 +790,10 @@ global class SchemasResource {
             if (totalResults > 1){
                 gen.writeStartObject();
             }
-            gen.writeStringField('id', 'urn:salesforce:schemas:extension:1.0:Entitlement'); 
+            gen.writeStringField('id', 'urn:salesforce:schemas:extension:2.0:Entitlement'); 
                 gen.writeStringField('name', 'Entitlement');   
                 gen.writeStringField('description', 'Schema resource for representing entitlements');               
-                gen.writeStringField('schema', 'urn:salesforce:schemas:extension:1.0:Entitlement');               
+                gen.writeStringField('schema', 'urn:salesforce:schemas:extension:2.0:Entitlement');               
                 gen.writeStringField('endpoint', '/Entitlements');   
                 gen.writeFieldName('attributes');
                 gen.writeStartArray(); 
@@ -828,7 +857,7 @@ global class SchemasResource {
                 gen.writeFieldName('meta');
                     gen.writeStartObject();
                         gen.writeStringField('resourceType', 'Schema');
-                        gen.writeStringField('location', base + path + 'Schemas/urn:salesforce:schemas:extension:1.0:Entitlement');
+                        gen.writeStringField('location', base + path + 'Schemas/urn:salesforce:schemas:extension:2.0:Entitlement');
                     gen.writeEndObject();
     
             if (totalResults > 1){
@@ -836,16 +865,15 @@ global class SchemasResource {
             }
                                                 
         }   
-        
         if (doRole){
             if (totalResults > 1){
                 gen.writeStartObject();
             }
 
-            gen.writeStringField('id', 'urn:salesforce:schemas:extension:1.0:Role'); 
+            gen.writeStringField('id', 'urn:salesforce:schemas:extension:2.0:Role'); 
             gen.writeStringField('name', 'Role');   
             gen.writeStringField('description', 'Schema resource for representing roles');               
-            gen.writeStringField('schema', 'urn:salesforce:schemas:extension:1.0:Role');               
+            gen.writeStringField('schema', 'urn:salesforce:schemas:extension:2.0:Role');               
             gen.writeStringField('endpoint', '/Roles');   
             gen.writeFieldName('attributes');
             gen.writeStartArray(); 
@@ -890,7 +918,7 @@ global class SchemasResource {
             gen.writeEndArray();
             gen.writeFieldName('meta');
                 gen.writeStartObject();
-                    gen.writeStringField('location', base + path + 'Schemas/urn:salesforce:schemas:extension:1.0:Role');
+                    gen.writeStringField('location', base + path + 'Schemas/urn:salesforce:schemas:extension:2.0:Role');
                     gen.writeStringField('resourceType', 'Schema');
                 gen.writeEndObject();
 
@@ -899,7 +927,6 @@ global class SchemasResource {
             }
                                            
         }          
-
         if (doEnterprise) {
             if (totalResults > 1){
                 gen.writeStartObject();
@@ -1011,17 +1038,16 @@ global class SchemasResource {
                                                   
 
         }
-        
         if (doExternal) {
             if (totalResults > 1){
                 gen.writeStartObject();
             }
 
-                gen.writeStringField('id', 'urn:salesforce:schemas:extension:external:1.0');                       
-                gen.writeStringField('name', 'urn:salesforce:schemas:extension:external:1.0');                       
+                gen.writeStringField('id', 'urn:salesforce:schemas:extension:2.0:external');                       
+                gen.writeStringField('name', 'urn:salesforce:schemas:extension:2.0:external');                       
                 gen.writeStringField('type', 'complex');   
                 gen.writeStringField('description', 'Salesforce external users extensions');                   
-                gen.writeStringField('schema', 'urn:salesforce:schemas:extension:external:1.0');
+                gen.writeStringField('schema', 'urn:salesforce:schemas:extension:2.0:external');
                 gen.writeStringField('endpoint', '/Users');   
                 gen.writeFieldName('attributes');
                 gen.writeStartArray();
@@ -1054,25 +1080,24 @@ global class SchemasResource {
             
                 gen.writeFieldName('meta');
                 gen.writeStartObject();
-                    gen.writeStringField('location', base + path + 'Schemas/urn:salesforce:schemas:extension:external:1.0');
+                    gen.writeStringField('location', base + path + 'Schemas/urn:salesforce:schemas:extension:2.0:external');
                     gen.writeStringField('resourceType', 'Schema');
                 gen.writeEndObject();
             
             if (totalResults > 1){
                     gen.writeEndObject();  
             }
-        }
-                    
+        }           
         if (doCommunities) {
             if (totalResults > 1){
                 gen.writeStartObject();
             }
 
-                gen.writeStringField('id', 'urn:salesforce:schemas:extension:communities:1.0');
-                gen.writeStringField('name', 'urn:salesforce:schemas:extension:communities:1.0');                       
+                gen.writeStringField('id', 'urn:salesforce:schemas:extension:2.0:communities');
+                gen.writeStringField('name', 'urn:salesforce:schemas:extension:2.0:communities');                       
                 gen.writeStringField('type', 'complex');   
                 gen.writeStringField('description', 'Salesforce Communities extensions');                   
-                gen.writeStringField('schema', 'urn:salesforce:schemas:extension:communities:1.0');
+                gen.writeStringField('schema', 'urn:salesforce:schemas:extension:2.0:communities');
                 gen.writeStringField('endpoint', '/Users');   
                 gen.writeFieldName('attributes');
                 gen.writeStartArray();
@@ -1098,7 +1123,7 @@ global class SchemasResource {
             
                 gen.writeFieldName('meta');
                 gen.writeStartObject();
-                    gen.writeStringField('location', base + path + 'Schemas/urn:salesforce:schemas:extension:communities:1.0');
+                    gen.writeStringField('location', base + path + 'Schemas/urn:salesforce:schemas:extension:2.0:communities');
                     gen.writeStringField('resourceType', 'Schema');
                 gen.writeEndObject();
             
@@ -1106,7 +1131,6 @@ global class SchemasResource {
                     gen.writeEndObject();  
             }
         }
-
         if (doOrgCustom){
             if (totalResults > 1){
                 gen.writeStartObject();
@@ -1143,21 +1167,19 @@ global class SchemasResource {
                         gen.writeEndObject();            
             if (totalResults > 1){
                     gen.writeEndObject();  
-            }
-                      
+            }                      
         }        
-
         if (doOther) {
             if (totalResults > 1){
                 gen.writeStartObject();
             }
 
-                gen.writeStringField('id', 'urn:salesforce:schemas:extension:1.0');                       
-                gen.writeStringField('name', 'urn:salesforce:schemas:extension:1.0');                       
+                gen.writeStringField('id', 'urn:salesforce:schemas:extension:2.0');                       
+                gen.writeStringField('name', 'urn:salesforce:schemas:extension:2.0');                       
                 gen.writeStringField('type', 'complex');   
                 gen.writeStringField('description', 'Salesforce User extensions');                   
-                gen.writeStringField('schema', 'urn:salesforce:schemas:extension:1.0');
-                gen.writeStringField('endpoint', '/Users');   
+                gen.writeStringField('schema', 'urn:salesforce:schemas:extension:2.0');
+                gen.writeStringField('endpoint', '/Individuals');   
                 gen.writeFieldName('attributes');
                 gen.writeStartArray();
                      gen.writeStartObject();
@@ -1172,7 +1194,7 @@ global class SchemasResource {
             
                 gen.writeFieldName('meta');
                 gen.writeStartObject();
-                    gen.writeStringField('location', base + path + 'Schemas/urn:ietf:params:scim:schemas:extension:enterprise:2.0:User');
+                    gen.writeStringField('location', base + path + 'Schemas/urn:salesforce:schemas:extension:2.0');
                     gen.writeStringField('resourceType', 'Schema');
                 gen.writeEndObject();
             
@@ -1180,8 +1202,216 @@ global class SchemasResource {
                     gen.writeEndObject();  
             }                                                                                              
         }
-        
-        
+        if (doIndividual){
+            if (totalResults > 1){
+                gen.writeStartObject();
+            }
+            gen.writeStringField('id', 'urn:salesforce:schemas:extension:2.0:individual'); 
+            gen.writeStringField('name', 'Individual');   
+            gen.writeStringField('description', 'Salesforce resource for representing Individual recirds');               
+            gen.writeStringField('schema', 'urn:salesforce:schemas:extension:2.0:individual');               
+            gen.writeStringField('endpoint', '/Individuals');   
+            gen.writeFieldName('attributes');
+            gen.writeStartArray(); 
+                gen.writeStartObject();
+                    gen.writeStringField('name', 'id');                       
+                    gen.writeStringField('type', 'string');   
+                    gen.writeBooleanField('multiValued', false); 
+                    gen.writeStringField('description', 'Unique identifier for the SCIM resource as defined by the Service Provider.');                               
+                    gen.writeStringField('mutability', 'readOnly');                             
+                    gen.writeBooleanField('required', false);                             
+                    gen.writeBooleanField('caseExact', false); 
+                    gen.writeStringField('uniqueness', 'server');  
+                gen.writeEndObject();  
+
+                //name
+                gen.writeStartObject();
+                    gen.writeStringField('name', 'name');                       
+                    gen.writeStringField('type', 'complex');   
+                    gen.writeBooleanField('multiValued', false); 
+                    gen.writeStringField('description', 'The components of the Individual\'s real name');                   
+                    gen.writeStringField('mutability', 'readWrite');                            
+                    gen.writeBooleanField('required', false);                             
+                    gen.writeBooleanField('caseExact', false); 
+                    gen.writeFieldName('subAttributes');
+                    gen.writeStartArray();
+                        gen.writeStartObject();
+                            gen.writeStringField('name', 'familyName');                       
+                            gen.writeStringField('type', 'string');   
+                            gen.writeStringField('description', 'The family name (lastName) of the Individual');                   
+                            gen.writeStringField('mutability', 'readWrite');                            
+                            gen.writeBooleanField('required', true);                             
+                            gen.writeBooleanField('caseExact', false); 
+                        gen.writeEndObject();  
+                        gen.writeStartObject();
+                            gen.writeStringField('name', 'givenName');                       
+                            gen.writeStringField('type', 'string');   
+                            gen.writeStringField('description', 'The first name of the Individual');                   
+                            gen.writeStringField('mutability', 'readWrite');                            
+                            gen.writeBooleanField('required', false);                             
+                            gen.writeBooleanField('caseExact', false); 
+                        gen.writeEndObject();   
+                        gen.writeStartObject();
+                            gen.writeStringField('name', 'honorificPrefix');                       
+                            gen.writeStringField('type', 'string');   
+                            gen.writeStringField('description', 'The honorific prefix of the Individual e.g. Salutation');
+                            gen.writeStringField('mutability', 'readWrite');                            
+                            gen.writeBooleanField('required', false);                             
+                            gen.writeBooleanField('caseExact', false); 
+                        gen.writeEndObject();  
+                    gen.writeEndArray();
+                gen.writeEndObject();
+
+            // birthdate
+                gen.writeStartObject();
+                    gen.writeStringField('name', 'birthDate');                       
+                    gen.writeStringField('type', 'dateTime');   
+                    gen.writeBooleanField('multiValued', false); 
+                    gen.writeStringField('description', 'Individual\'s birth date');                               
+                    gen.writeStringField('mutability', 'readWrite');                             
+                    gen.writeBooleanField('required', false);                             
+                gen.writeEndObject();                          
+
+            // CanStorePiiElsewhere
+                gen.writeStartObject();
+                    gen.writeStringField('name', 'canStorePiiElsewhere');                       
+                    gen.writeStringField('type', 'boolean');   
+                    gen.writeBooleanField('multiValued', false); 
+                    gen.writeStringField('description', 'Consent to store PII elsewhere');                               
+                    gen.writeStringField('mutability', 'readWrite');                             
+                    gen.writeBooleanField('required', false);                             
+                gen.writeEndObject();                          
+
+            // HasOptedOutGeoTracking
+                gen.writeStartObject();
+                    gen.writeStringField('name', 'hasOptedOutGeoTracking');                       
+                    gen.writeStringField('type', 'boolean');   
+                    gen.writeBooleanField('multiValued', false); 
+                    gen.writeStringField('description', 'Has the data subject opted out of geo-tracking a.k.a. block geo-tracking');
+                    gen.writeStringField('mutability', 'readWrite');                             
+                    gen.writeBooleanField('required', false);                                                 
+                gen.writeEndObject();  
+
+            // HasOptedOutProcessing
+                gen.writeStartObject();
+                    gen.writeStringField('name', 'hasOptedOutProcessing');                       
+                    gen.writeStringField('type', 'boolean');   
+                    gen.writeBooleanField('multiValued', false); 
+                    gen.writeStringField('description', 'Has the data subject opted out of data processing a.k.a. do not process');
+                    gen.writeStringField('mutability', 'readWrite');                             
+                    gen.writeBooleanField('required', false);                                                 
+                gen.writeEndObject();  
+
+            // HasOptedOutProfiling
+                gen.writeStartObject();
+                    gen.writeStringField('name', 'hasOptedOutProfiling');                       
+                    gen.writeStringField('type', 'boolean');   
+                    gen.writeBooleanField('multiValued', false); 
+                    gen.writeStringField('description', 'Has the data subject opted out of profiling a.k.a. do not profile');
+                    gen.writeStringField('mutability', 'readWrite');                             
+                    gen.writeBooleanField('required', false);                                                 
+                gen.writeEndObject();  
+
+            // HasOptedOutSolicit
+                gen.writeStartObject();
+                    gen.writeStringField('name', 'hasOptedOutSolicit');                       
+                    gen.writeStringField('type', 'boolean');   
+                    gen.writeBooleanField('multiValued', false); 
+                    gen.writeStringField('description', 'Has the data subject opted out of solicitation a.k.a do not market');
+                    gen.writeStringField('mutability', 'readWrite');                             
+                    gen.writeBooleanField('required', false);                                                 
+                gen.writeEndObject();  
+  
+            // HasOptedOutTrack
+                gen.writeStartObject();
+                    gen.writeStringField('name', 'hasOptedOutTrack');                       
+                    gen.writeStringField('type', 'boolean');   
+                    gen.writeBooleanField('multiValued', false); 
+                    gen.writeStringField('description', 'Has the data subject opted out of tracking a.k.a do not track');
+                    gen.writeStringField('mutability', 'readWrite');                             
+                    gen.writeBooleanField('required', false);                                                 
+                gen.writeEndObject();  
+
+            // IndividualsAge
+                gen.writeStartObject();
+                    gen.writeStringField('name', 'individualsAge');                       
+                    gen.writeStringField('type', 'string');   
+                    gen.writeBooleanField('multiValued', false); 
+                    gen.writeStringField('description', 'Data subject\'s age range (via picklist)');                               
+                    gen.writeStringField('mutability', 'readWrite');                             
+                    gen.writeBooleanField('required', false);                             
+                    gen.writeBooleanField('caseExact', false); 
+                gen.writeEndObject();  
+  
+            // SendIndividualData
+                gen.writeStartObject();
+                    gen.writeStringField('name', 'sendIndividualData');                       
+                    gen.writeStringField('type', 'boolean');   
+                    gen.writeBooleanField('multiValued', false); 
+                    gen.writeStringField('description', 'Export Individual\'s data');
+                    gen.writeStringField('mutability', 'readWrite');                             
+                    gen.writeBooleanField('required', false);                                                 
+                gen.writeEndObject();  
+  
+            // ShouldForget
+                gen.writeStartObject();
+                    gen.writeStringField('name', 'shouldForget');                       
+                    gen.writeStringField('type', 'boolean');   
+                    gen.writeBooleanField('multiValued', false); 
+                    gen.writeStringField('description', 'Forget this Individual');
+                    gen.writeStringField('mutability', 'readWrite');                             
+                    gen.writeBooleanField('required', false);                                                 
+                gen.writeEndObject();  
+
+            gen.writeEndArray();
+            gen.writeFieldName('meta');
+                        gen.writeStartObject();
+                            gen.writeStringField('location', base + path + 'Schemas/urn:salesforce:schemas:extension:2.0individual');
+                            gen.writeStringField('resourceType', 'Schema');
+                        gen.writeEndObject();            
+            if (totalResults > 1){
+                    gen.writeEndObject();  
+            }
+        }
+        if (doIndividualExtension){
+            if (totalResults > 1){
+                gen.writeStartObject();
+            }
+
+                    gen.writeStringField('id', 'urn:salesforce:schemas:extension:2.0:individual:' + UserInfo.getOrganizationId());
+                    gen.writeStringField('name', 'Extensions to Individual');
+                    gen.writeStringField('type', 'complex');
+                    gen.writeStringField('description', 'All extension custom fields for an Individual in the organization');
+                    gen.writeStringField('schema', 'urn:salesforce:schemas:extension:2.0:individual:' + UserInfo.getOrganizationId());
+                    gen.writeStringField('endpoint', '/Individuals');
+                    gen.writeFieldName('attributes');
+                    gen.writeStartArray();
+                        Map<String, Schema.SObjectField> r = Schema.sObjectType.Individual.fields.getMap();
+                        for (String key : r.keySet()) {
+                            SObjectField thisField = r.get(key);
+                            DescribeFieldResult thisDescribeResult = thisField.getDescribe();
+                            if (thisDescribeResult.isCustom()) {
+                                 gen.writeStartObject();
+                                    gen.writeStringField('name', thisDescribeResult.getName());                       
+                                    gen.writeStringField('type', getScimTypeFromSoapType(thisDescribeResult.getSOAPType()));   
+                                    gen.writeStringField('description', thisDescribeResult.getInlineHelpText() + '');       // Description somehow not available from the sobject api.            
+                                    gen.writeBooleanField('readOnly', !thisDescribeResult.isUpdateable());                             
+                                    gen.writeBooleanField('required', !thisDescribeResult.isNillable());                             
+                                    gen.writeBooleanField('caseExact', thisDescribeResult.isCaseSensitive()); 
+                                gen.writeEndObject();         
+                            }
+                        }
+                    gen.writeEndArray();
+                    gen.writeFieldName('meta');
+                        gen.writeStartObject();
+                            gen.writeStringField('location', base + path + 'Schemas/urn:salesforce:schemas:extension:2.0:individual:' + UserInfo.getOrganizationId());
+                            gen.writeStringField('resourceType', 'Schema');
+                        gen.writeEndObject();            
+            if (totalResults > 1){
+                    gen.writeEndObject();  
+            }                      
+        }        
+
         if (totalResults > 1){
             gen.writeEndArray();                        
             gen.writeFieldName('meta');

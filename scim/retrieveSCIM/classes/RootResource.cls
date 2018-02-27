@@ -19,6 +19,7 @@ global class RootResource {
             gen.writeStringField('Groups', '/services/apexrest/scim/v2/Groups');
             gen.writeStringField('Roles', '/services/apexrest/scim/v2/Roles');        
             gen.writeStringField('Entitlements', '/services/apexrest/scim/v2/Entitlements');
+            gen.writeStringField('Users', '/services/apexrest/scim/v2/Individuals');
             gen.writeStringField('ResourceTypes', '/services/apexrest/scim/v2/ResourceTypes');
             gen.writeStringField('ServiceProviderConfigs', '/services/apexrest/scim/v2/ServiceProviderConfigs');                      
             gen.writeStringField('Schemas', '/services/apexrest/scim/v2/Schemas');   

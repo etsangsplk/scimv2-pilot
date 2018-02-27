@@ -16,35 +16,47 @@ global class ResourceTypeResource {
         Boolean doGroup = true;
         Boolean doEntitlement = true;
         Boolean doRole = true;
+        Boolean doIndividual = true;
+
         if (schemaType.equalsIgnoreCase('urn:ietf:params:scim:schemas:core:2.0:User') || schemaType.equalsIgnoreCase('User')) {
             doGroup = false;
             doEntitlement = false;
             doRole = false;
+            doIndividual = false;
         } else if (schemaType.equalsIgnoreCase('urn:ietf:params:scim:schemas:core:2.0:Group') || schemaType.equalsIgnoreCase('Group')) {
             doUser = false;
             doEntitlement = false;
             doRole = false;            
-        } else if (schemaType.equalsIgnoreCase('urn:salesforce:schemas:extension:1.0:Entitlement') || schemaType.equalsIgnoreCase('Entitlement')) {
+            doIndividual = false;
+        } else if (schemaType.equalsIgnoreCase('urn:salesforce:schemas:extension:2.0:Entitlement') || schemaType.equalsIgnoreCase('Entitlement')) {
             doUser = false;
             doGroup = false;
-            doRole = false;            
-        } else if (schemaType.equalsIgnoreCase('urn:salesforce:schemas:extension:1.0:Role') || schemaType.equalsIgnoreCase('Role')) {
+            doRole = false;      
+            doIndividual = false;      
+        } else if (schemaType.equalsIgnoreCase('urn:salesforce:schemas:extension:2.0:Role') || schemaType.equalsIgnoreCase('Role')) {
             doUser = false;
             doGroup = false;
-            doEntitlement = false;            
+            doEntitlement = false;
+            doIndividual = false;            
+        } else if (schemaType.equalsIgnoreCase('urn:salesforce:schemas:extension:2.0:Individual') || schemaType.equalsIgnoreCase('Individual')) {
+            doUser = false;
+            doGroup = false;
+            doRole = false;       
+            doEntitlement = false;     
         }
-        res.responseBody = serializeConfigs(req.headers.containsKey('X-Prettyprint'), doUser, doGroup, doEntitlement, doRole);
+        res.responseBody = serializeConfigs(req.headers.containsKey('X-Prettyprint'), doUser, doGroup, doEntitlement, doRole, doIndividual);
         
     }  
     
-    public static Blob serializeConfigs(boolean prettyPrint, boolean doUser, boolean doGroup, boolean doEntitlement, boolean doRole) {
-        Integer totalResults = 4;
+    public static Blob serializeConfigs(boolean prettyPrint, boolean doUser, boolean doGroup, boolean doEntitlement, boolean doRole, boolean doIndividual) {
+        Integer totalResults = 5;
 
         if (!doUser) totalResults--;
         if (!doGroup) totalResults--;
         if (!doEntitlement) totalResults--;
         if (!doRole) totalResults--;
-        
+        if (!doIndividual) totalResults--;
+
         String base = URL.getSalesforceBaseUrl().toExternalForm();               
         String path = '/services/apexrest/scim/v2/';
         String fullPath = base + path;
@@ -170,7 +182,33 @@ global class ResourceTypeResource {
             }
             
         }
-        
+
+        if (doIndividual) {
+            if (totalResults > 1){
+                gen.writeStartObject();
+            }
+                gen.writeStringField('id', 'urn:salesforce:schemas:extension:2.0:Individual');
+                gen.writeStringField('name', 'Individual');
+                gen.writeStringField('description', 'Resource type for Users. Users are thinsg that can login.');
+                gen.writeStringField('endpoint', '/Individuals');
+                gen.writeStringField('schema', 'urn:salesforce:schemas:extension:2.0:Individual');
+                gen.writeFieldName('schemaExtensions');
+                gen.writeStartArray();
+                    gen.writeStartObject();
+                        gen.writeStringField('schema', 'urn:salesforce:schemas:extension:2.0:Individual:' + UserInfo.getOrganizationId());
+                        gen.writeStringField('required', 'false');
+                    gen.writeEndObject();
+                gen.writeEndArray();
+                gen.writeFieldName('meta');
+                gen.writeStartObject();
+                        gen.writeStringField('location', fullPath + 'Individuals');
+                        gen.writeStringField('resourceType', 'ResourceType');
+                gen.writeEndObject();
+            if (totalResults > 1){
+                gen.writeEndObject();
+            }
+        }  
+
         if (totalResults > 1){
             gen.writeEndArray();                        
             gen.writeFieldName('meta');
