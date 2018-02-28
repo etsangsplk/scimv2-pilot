@@ -1322,9 +1322,9 @@ global class SchemasResource {
                     gen.writeBooleanField('required', false);                                                 
                 gen.writeEndObject();  
   
-            // HasOptedOutTrack
+            // HasOptedOutTracking
                 gen.writeStartObject();
-                    gen.writeStringField('name', 'hasOptedOutTrack');                       
+                    gen.writeStringField('name', 'hasOptedOutTracking');                       
                     gen.writeStringField('type', 'boolean');   
                     gen.writeBooleanField('multiValued', false); 
                     gen.writeStringField('description', 'Has the data subject opted out of tracking a.k.a do not track');

@@ -5,9 +5,9 @@ global with sharing class UserResource extends ScimResource {
     final private static Map<String, Schema.SOAPType> customFieldToSoapTypeMap;
     
     final private static String enterpriseExtensionURN = 'urn:ietf:params:scim:schemas:extension:enterprise:2.0:User';
-    final private static String externalSchemaURN = 'urn:salesforce:schemas:extension:external:1.0';
-    final private static String otherSchemaURN = 'urn:salesforce:schemas:extension:1.0';
-    final private static String communitiesSchemaURN = 'urn:salesforce:schemas:extension:communities:1.0';
+    final private static String externalSchemaURN = 'urn:salesforce:schemas:extension:2.0:external';
+    final private static String otherSchemaURN = 'urn:salesforce:schemas:extension:2.0';
+    final private static String communitiesSchemaURN = 'urn:salesforce:schemas:extension:2.0:communities';
     final private static String orgId = UserInfo.getOrganizationId();
     
     final private static String baseURL = '/services/apexrest/scim/v2/';
@@ -671,7 +671,8 @@ global with sharing class UserResource extends ScimResource {
             // If no externalUserProperties -> create account and contact on the fly
             // if has externalUserProperties -> if has account create contact on the fly, otherwise use as is
 
-            // TODO add support to PersonAccount
+            //TODO if no accountId and no PersonAccount and Contactless is enable then create Contactless assuming we can check for Contactless via Apex
+
             RecordType personAccountRecordType =  [SELECT Id FROM RecordType WHERE Name = 'Person Account' and SObjectType = 'Account'];
             if (isCreate) {
                 if(u.profileId != null){

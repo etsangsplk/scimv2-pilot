@@ -291,7 +291,6 @@ public class FilterTranslator {
         if (attributes != null) {
             String[] attrs = attributes.split(',');
             for (String attr : attrs) {
-                System.debug('attr: ' + attr);
                 // hack to avoid organization or profielURL from entering the query string
                 if ((attr == 'urn:ietf:params:scim:schemas:extension:enterprise:2.0:User:organization') || (attr == 'profileURL') ){
                     attr = 'id';

@@ -284,6 +284,7 @@ global abstract with sharing class ScimResource {
     }
     
     public static Integer countQuery(String aggrSoql) {
+        System.debug('aggrSoql: ' + aggrSoql);
         List<AggregateResult> s = Database.query(aggrSoql);
         return Integer.valueOf(s.get(0).get('expr0'));
     }
