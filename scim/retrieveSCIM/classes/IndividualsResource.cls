@@ -88,9 +88,9 @@ global class IndividualsResource {
             List<Individual> inds = Database.query(actualSoql);
 
             if ( !inds.isEmpty()  ) {
-                res.responseBody = serializeIndividuals(inds, total, startIndex, count, attributes, excludedAttributes, host,req.headers.containsKey('X-Prettyprint'));
+                res.responseBody = IndividualResourceSerializer.serializeIndividuals(inds, total, startIndex, count, attributes, excludedAttributes, host,req.headers.containsKey('X-Prettyprint'));
             } else {
-                res.responseBody = serializeIndividuals(null,0,null,null,null,null,host,req.headers.containsKey('X-Prettyprint'));
+                res.responseBody = IndividualResourceSerializer.serializeIndividuals(null,0,null,null,null,null,host,req.headers.containsKey('X-Prettyprint'));
             }
         }
         catch (Exception ex) {
@@ -98,37 +98,5 @@ global class IndividualsResource {
             res.responseBody = SCIMError.serializeError(res.statusCode, ex.getMessage(), req.headers.containsKey('X-Prettyprint'));
             return;
         }              
-    }
-
-    private static Blob serializeIndividuals(List<Individual> inds, Integer total, String startIndex, String count, String attributes, String excludedAttributes, String host, boolean prettyPrint) {
-        JSONGenerator gen = JSON.createGenerator(prettyPrint);
-        gen.writeStartObject();
-            gen.writeNumberField('totalResults', total);
-            
-            if (count != null) {
-                Integer countInt = Math.min(Integer.valueof(count), inds.size());
-                gen.writeNumberField('itemsPerPage', countInt);
-            } 
-            else if ((total != 0) && (total != inds.size())) {
-                gen.writeNumberField('itemsPerPage', inds.size());
-            }
-        
-            if (startIndex != null) {
-                gen.writeNumberField('startIndex', Integer.valueof(startIndex));
-            }           
-            
-            gen.writeFieldName('schemas');
-            gen.writeStartArray();
-                gen.writeString('urn:ietf:params:scim:api:messages:2.0:ListResponse');
-            gen.writeEndArray();
-            gen.writeFieldName('Resources');
-            gen.writeStartArray();
-            if (inds != null) {
-               IndividualResource.serializeIndividualWithGenerator(inds, attributes, excludedAttributes, host, gen);
-            }
-            gen.writeEndArray();
-        gen.writeEndObject();
-        return Blob.valueOf(gen.getAsString());
-    
-    }    
+    } 
 }

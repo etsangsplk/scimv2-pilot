@@ -83,75 +83,44 @@ global with sharing class IndividualResource extends SCIMResource {
         
     }
 
-    public static void serializeIndividualWithGenerator(List<Individual> inds, String attributes, String excludedAttributes, String host, JSONGenerator gen) {
-        serializeIndividualWithGenerator(inds, attributes, excludedAttributes, host, gen, 200, 0);
-    }
-    
-    public static void serializeIndividualWithGenerator(List<Individual> inds, String attributes, String excludedAttributes, String host, JSONGenerator gen, Integer indsLimit, Integer indsOffset) {
-        String scimRef = host + '/services/apexrest/scim/v2/';
-        for (Individual i : inds) {
-            gen.writeStartObject();
-                gen.writeFieldName('schemas');
-                gen.writeStartArray();
-                    gen.writeString('urn:salesforce:schemas:extension:2.0:individual');
-                gen.writeEndArray();
-                gen.writeStringField('id', i.id);            
-
-
-                if (shouldSerialize('name', attributes, excludedAttributes)) {
-                    gen.writeFieldName('name');
-                        gen.writeStartObject();
-                            if ((shouldSerialize('name.familyName', attributes, excludedAttributes)) && (i.Lastname != null)) gen.writeStringField('familyName', i.Lastname);
-                            if ((shouldSerialize('name.givenName', attributes, excludedAttributes)) && (i.Firstname != null)) gen.writeStringField('givenName', i.Firstname);
-                            if ((shouldSerialize('name.honorificPrefix', attributes, excludedAttributes)) && (i.Salutation != null)) gen.writeStringField('honorificPrefix', i.Salutation);
-                        gen.writeEndObject();
-                }
-
-                if ((shouldSerialize('birthDate', attributes, excludedAttributes)) && (i.birthDate != null)) gen.writeDateField('birthDate', i.birthDate);
-                if ((shouldSerialize('individualsAge', attributes, excludedAttributes)) && (i.individualsAge != null)) gen.writeStringField('individualsAge', i.individualsAge);
-
-                if ((shouldSerialize('canStorePiiElsewhere', attributes, excludedAttributes)) && (i.canStorePiiElsewhere != null)) gen.writeBooleanField('canStorePiiElsewhere', i.canStorePiiElsewhere);
-                if ((shouldSerialize('hasOptedOutGeoTracking', attributes, excludedAttributes)) && (i.hasOptedOutGeoTracking != null)) gen.writeBooleanField('hasOptedOutGeoTracking', i.hasOptedOutGeoTracking);
-                if ((shouldSerialize('hasOptedOutProcessing', attributes, excludedAttributes)) && (i.hasOptedOutProcessing != null)) gen.writeBooleanField('hasOptedOutProcessing', i.hasOptedOutProcessing);
-                if ((shouldSerialize('hasOptedOutProfiling', attributes, excludedAttributes)) && (i.hasOptedOutProfiling != null)) gen.writeBooleanField('hasOptedOutProfiling', i.hasOptedOutProfiling);
-                if ((shouldSerialize('hasOptedOutSolicit', attributes, excludedAttributes)) && (i.hasOptedOutSolicit != null)) gen.writeBooleanField('hasOptedOutSolicit', i.hasOptedOutSolicit);
-                if ((shouldSerialize('hasOptedOutTracking', attributes, excludedAttributes)) && (i.hasOptedOutTracking != null)) gen.writeBooleanField('hasOptedOutTracking', i.hasOptedOutTracking);
-                if ((shouldSerialize('sendIndividualData', attributes, excludedAttributes)) && (i.sendIndividualData != null)) gen.writeBooleanField('sendIndividualData', i.sendIndividualData);
-                if ((shouldSerialize('shouldForget', attributes, excludedAttributes)) && (i.shouldForget != null)) gen.writeBooleanField('shouldForget', i.shouldForget);
-
-
-                if (shouldSerialize('meta', attributes)) {
-                    gen.writeFieldName('meta');
-                        gen.writeStartObject();
-                            String createdFormated = i.CreatedDate.format('yyyy-MM-dd');
-                            createdFormated += 'T';
-                            createdFormated += i.CreatedDate.formatGmt('hh:mm:ss');
-                            gen.writeStringField('created', createdFormated + 'Z');
-                            
-                            String lastmodFormated = i.LastModifiedDate.format('yyyy-MM-dd');
-                            lastmodFormated += 'T';
-                            lastmodFormated += i.LastModifiedDate.formatGmt('hh:mm:ss');
-                            gen.writeStringField('lastModified', lastmodFormated + 'Z');
-                            
-                            String base = URL.getSalesforceBaseUrl().toExternalForm();
-                            String path = '/services/apexrest/v2/Individuals/' + i.id;
-                            gen.writeStringField('location', base + path);
-
-                    		gen.writeStringField('resourceType', 'Individual');                    
-                    
-                            Blob digest = Crypto.generateDigest('SHA-1',  Blob.valueOf(user.id + lastmodFormated));
-                            gen.writeStringField('version', EncodingUtil.convertToHex(digest));                                        
-                        gen.writeEndObject();
-                }
-            gen.writeEndObject();    
-        }   
-    }    
-    
-    public static boolean shouldSerialize(String attributeName, String attributes) {
-        return ScimResource.shouldSerialize(attributeName, attributes, IndividualsResource.scimNameToIndividualSObjectNameMap);
+    @HttpPost
+    global static void doPost() {
+        RestRequest req = RestContext.request;
+        RestResponse res = RestContext.response;
+        String method = req.headers.get('X-HTTP-Method-Override');
+        if ( method == null ) method = 'POST';
+        if ( method.equals('DELETE') ) {
+            doDelete(); 
+        } else {
+            System.JSONParser parser = System.JSON.createParser(req.requestBody.toString());
+            Id indId = doUpsert(null, parser);
+            if (indId != null) {
+                // retrieve self
+                doGet(indId, null, true);
+            }
+        }
     }  
-   
-   public static boolean shouldSerialize(String attributeName, String attributes, String excludedAttributes) {
-        return ScimResource.shouldSerializeWithExcluded(attributeName, attributes, excludedAttributes, IndividualsResource.scimNameToIndividualSObjectNameMap);
-    }       
+
+    @HttpDelete
+    global static void doDelete() {
+        RestRequest req = RestContext.request;
+        RestResponse res = RestContext.response;
+        String[] uriParts = req.requestURI.split('/',0);
+        Integer numParts = uriParts.size() - 1;  
+        
+        Individual[] i = Database.query('select id from individual where id=\'' + uriParts[numParts] + '\'');
+        if(i.size() == 1) {
+        	delete i[0];
+            res.statusCode = 204;
+        } else {
+            res.statusCode = 404;
+            res.responseBody = SCIMError.serializeError(res.statusCode, 'No such resource.', req.headers.containsKey('X-Prettyprint'));
+            return;
+        }
+    }   
+
+    public static Id doUpsert(String groupId, System.JSONParser parser) {
+    
+    }
+       
 }
