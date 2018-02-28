@@ -1,34 +1,5 @@
 @RestResource(urlMapping='/scim/v2/Users/.search')
 global class UserDotSearchResource extends ScimResource {
-    private static Blob serializeUsers(List<User> users, Integer total, String startIndex, String count, String attributes, String excludedAttributes, String host, boolean prettyPrint) {
-        JSONGenerator gen = JSON.createGenerator(prettyPrint);
-        gen.writeStartObject();
-            gen.writeNumberField('totalResults', total);
-            
-            if (count != null) {
-                Integer countInt = Math.min(Integer.valueof(count), users.size());
-                gen.writeNumberField('itemsPerPage', countInt);
-            } 
-            else if (total != users.size()) {
-                gen.writeNumberField('itemsPerPage', users.size());
-            }
-            
-            if (startIndex != null) {
-                gen.writeNumberField('startIndex', Integer.valueof(startIndex));
-            }
-            
-            gen.writeFieldName('schemas');
-            gen.writeStartArray();
-                gen.writeString('urn:ietf:params:scim:api:messages:2.0:ListResponse');
-            gen.writeEndArray();
-            gen.writeFieldName('Resources');
-            gen.writeStartArray();
-                UserResource.serializeUserWithGenerator(users, attributes, excludedAttributes, host,gen);
-            gen.writeEndArray();
-        gen.writeEndObject();
-        return Blob.valueOf(gen.getAsString());
-    }
-    
     @HttpPost
     global static void doPost() {
         // TODO figure out why adding an attribute clause returns few records than should be
@@ -85,7 +56,7 @@ global class UserDotSearchResource extends ScimResource {
                 users = Database.query(queryHolder.getActualQuery());
     
                 if (!users.isEmpty()) {
-                    res.responseBody = serializeUsers(users, total, startIndex, count, attributes, excludedAttributes, host, req.headers.containsKey('X-Prettyprint'));        
+                    res.responseBody = UserResourceSerializer.serializeUsers(users, total, startIndex, count, attributes, excludedAttributes, host, req.headers.containsKey('X-Prettyprint'));        
                 } else {
                     res.statusCode = 200;
                     JSONGenerator gen = JSON.createGenerator(true);

@@ -68,7 +68,7 @@ global with sharing class IndividualResource extends SCIMResource {
                 }
                 Boolean isPrettyPrint = req.headers.containsKey('X-Prettyprint');
                 JSONGenerator gen = JSON.createGenerator(isPrettyPrint);
-                serializeIndividualWithGenerator(inds, attributes, excludedAttributes, host, gen, indsLimit, indsOffset);      
+                IndividualResourceSerializer.serializeIndividualWithGenerator(inds, attributes, excludedAttributes, host, gen, indsLimit, indsOffset);      
                 res.responseBody =  Blob.valueOf(gen.getAsString());
             } else {
                 res.statusCode = 404;
@@ -96,7 +96,7 @@ global with sharing class IndividualResource extends SCIMResource {
             Id indId = doUpsert(null, parser);
             if (indId != null) {
                 // retrieve self
-                doGet(indId, null, true);
+                doGet(indId, null, null, true);
             }
         }
     }  
@@ -120,7 +120,7 @@ global with sharing class IndividualResource extends SCIMResource {
     }   
 
     public static Id doUpsert(String groupId, System.JSONParser parser) {
-    
+    	return '0PK';
     }
        
 }
