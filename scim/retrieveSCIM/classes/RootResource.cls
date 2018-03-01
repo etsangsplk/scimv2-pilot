@@ -12,17 +12,24 @@ global class RootResource {
         
     }  
     
-    public static Blob serializeConfigs(boolean prettyPrint) {
+    private Boolean isIndividualEnabled(){
+        List<Individual> inds = [SELECT DeveloperName FROM EntityDefinition WHERE DeveloperName = 'Individual'];
+        if (inds.size() == 1){
+            return true;
+        } else return false;
+    }
+
+    private static Blob serializeConfigs(boolean prettyPrint) {
         JSONGenerator gen = JSON.createGenerator(prettyPrint);
         gen.writeStartObject();
             gen.writeStringField('Users', '/services/apexrest/scim/v2/Users');                       
             gen.writeStringField('Groups', '/services/apexrest/scim/v2/Groups');
             gen.writeStringField('Roles', '/services/apexrest/scim/v2/Roles');        
             gen.writeStringField('Entitlements', '/services/apexrest/scim/v2/Entitlements');
-            gen.writeStringField('Users', '/services/apexrest/scim/v2/Individuals');
             gen.writeStringField('ResourceTypes', '/services/apexrest/scim/v2/ResourceTypes');
             gen.writeStringField('ServiceProviderConfigs', '/services/apexrest/scim/v2/ServiceProviderConfigs');                      
-            gen.writeStringField('Schemas', '/services/apexrest/scim/v2/Schemas');   
+            gen.writeStringField('Schemas', '/services/apexrest/scim/v2/Schemas');
+            if (isIndividualEnabled()) gen.writeStringField('Individual', '/services/apexrest/scim/v2/Individuals');
         gen.writeEndObject();
         return Blob.valueOf(gen.getAsString());
     }

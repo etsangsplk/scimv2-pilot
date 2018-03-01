@@ -26,10 +26,10 @@ global class SchemasResource {
         String schemaType = uriParts[numParts];
 
         // is Individual enabled?
-        Boolean individualEnabled = false;
+        Boolean isIndividualEnabled = false;
         Integer indCount = [select count() FROM EntityDefinition WHERE DeveloperName = 'Individual' ];
         if (indCount == 1) {
-            individualEnabled = true;
+            isIndividualEnabled = true;
         }
         try {
 
@@ -45,7 +45,7 @@ global class SchemasResource {
                 doOther = true;
                 doCommunities = true;
 
-                if (individualEnabled) {
+                if (isIndividualEnabled) {
                     doIndividual = true;
                     doIndividualExtension = true;
                 }
@@ -67,9 +67,9 @@ global class SchemasResource {
                 doOther = true;
             } else if(schemaType.equalsIgnoreCase('urn:salesforce:schemas:extension:2.0:communities')){
                 doCommunities = true;
-            } else if(schemaType.equalsIgnoreCase('urn:salesforce:schemas:extension:2.0:Individual')){
+            } else if((isIndividualEnabled) && (schemaType.equalsIgnoreCase('urn:salesforce:schemas:extension:2.0:Individual'))){
                 doIndividual = true;
-            } else if((individualEnabled) && (schemaType.equalsIgnoreCase('urn:salesforce:schemas:extension:2.0:Individual:' + UserInfo.getOrganizationId()))){
+            } else if((isIndividualEnabled) && (schemaType.equalsIgnoreCase('urn:salesforce:schemas:extension:2.0:Individual:' + UserInfo.getOrganizationId()))){
                 doIndividualExtension = true;
             } else {
                 throw new ScimException('Invalid Schema specified');
@@ -87,7 +87,7 @@ global class SchemasResource {
         }   
 
     }  
-    
+
     private static Blob serializeSchemas(boolean prettyPrint) {
 
         Integer totalResults = 9;

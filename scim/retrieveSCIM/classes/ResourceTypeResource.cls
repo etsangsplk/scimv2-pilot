@@ -1,6 +1,5 @@
 @RestResource(urlMapping='/scim/v2/ResourceTypes/*')
 global class ResourceTypeResource {
-    
     @HttpGet
     global static void doGet() {
         
@@ -16,39 +15,40 @@ global class ResourceTypeResource {
         Boolean doGroup = true;
         Boolean doEntitlement = true;
         Boolean doRole = true;
-        Boolean doIndividual = true;
-
+        Boolean doIndividual = false; // default is false as an assumption Individual isn't enabled by default
+        Boolean isIndividualEnabled = false;
+        Integer inds = [SELECT COUNT() FROM EntityDefinition WHERE DeveloperName = 'Individual'];
+        if (inds == 1){
+            doIndividual = true;
+        }
+        
         if (schemaType.equalsIgnoreCase('urn:ietf:params:scim:schemas:core:2.0:User') || schemaType.equalsIgnoreCase('User')) {
             doGroup = false;
             doEntitlement = false;
             doRole = false;
-            doIndividual = false;
         } else if (schemaType.equalsIgnoreCase('urn:ietf:params:scim:schemas:core:2.0:Group') || schemaType.equalsIgnoreCase('Group')) {
             doUser = false;
             doEntitlement = false;
             doRole = false;            
-            doIndividual = false;
         } else if (schemaType.equalsIgnoreCase('urn:salesforce:schemas:extension:2.0:Entitlement') || schemaType.equalsIgnoreCase('Entitlement')) {
             doUser = false;
             doGroup = false;
             doRole = false;      
-            doIndividual = false;      
         } else if (schemaType.equalsIgnoreCase('urn:salesforce:schemas:extension:2.0:Role') || schemaType.equalsIgnoreCase('Role')) {
             doUser = false;
             doGroup = false;
             doEntitlement = false;
-            doIndividual = false;            
-        } else if (schemaType.equalsIgnoreCase('urn:salesforce:schemas:extension:2.0:Individual') || schemaType.equalsIgnoreCase('Individual')) {
+        } else if ((schemaType.equalsIgnoreCase('urn:salesforce:schemas:extension:2.0:Individual') || (schemaType.equalsIgnoreCase('Individual')))) {
             doUser = false;
             doGroup = false;
             doRole = false;       
-            doEntitlement = false;     
+            doEntitlement = false;
         }
         res.responseBody = serializeConfigs(req.headers.containsKey('X-Prettyprint'), doUser, doGroup, doEntitlement, doRole, doIndividual);
         
-    }  
-    
-    public static Blob serializeConfigs(boolean prettyPrint, boolean doUser, boolean doGroup, boolean doEntitlement, boolean doRole, boolean doIndividual) {
+    }      
+
+    private static Blob serializeConfigs(boolean prettyPrint, boolean doUser, boolean doGroup, boolean doEntitlement, boolean doRole, boolean doIndividual) {
         Integer totalResults = 5;
 
         if (!doUser) totalResults--;

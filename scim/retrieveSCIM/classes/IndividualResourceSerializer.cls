@@ -36,6 +36,39 @@ public class IndividualResourceSerializer {
                 if ((shouldSerialize('sendIndividualData', attributes, excludedAttributes)) && (i.sendIndividualData != null)) gen.writeBooleanField('sendIndividualData', i.sendIndividualData);
                 if ((shouldSerialize('shouldForget', attributes, excludedAttributes)) && (i.shouldForget != null)) gen.writeBooleanField('shouldForget', i.shouldForget);
 
+            Map<String, Schema.SObjectField> r = Schema.sObjectType.Individual.fields.getMap();
+            Map<String, Object> customFieldMap = new Map<String, Object>();
+            if (shouldSerialize('urn:salesforce:schemas:extension:2.0:individual:' + UserInfo.getOrganizationId(), attributes, excludedAttributes)) {
+                for (String key : r.keySet()) {
+                    SObjectField thisField = r.get(key);
+                    DescribeFieldResult thisDescribeResult = thisField.getDescribe();
+                    if (thisDescribeResult.isCustom()) {
+                        try {
+                            Object value = i.get(thisDescribeResult.getName());  
+                            if (value != null) {
+                                customFieldMap.put(thisDescribeResult.getName(), value);
+                            }
+                        }
+                        catch (Exception ex) {
+                            // Eat it silently.
+                            // Some field types do not support get (e.g. geolocation composite field)
+                        }
+                    }
+                }
+                if (!customFieldMap.isEmpty()) {    
+                    gen.writeFieldName('urn:salesforce:schemas:extension:' + UserInfo.getOrganizationId());
+                    gen.writeStartObject();
+                        for (String key : customFieldMap.keySet()) {
+                            Object value = customFieldMap.get(key);
+                            if (value != null) {
+                                gen.writeObjectfield(key, value);
+                            }
+                        }                
+                    gen.writeEndObject();    
+                }
+            }
+         
+
 
                 if (shouldSerialize('meta', attributes)) {
                     gen.writeFieldName('meta');
@@ -72,7 +105,7 @@ public class IndividualResourceSerializer {
         return ScimResource.shouldSerializeWithExcluded(attributeName, attributes, excludedAttributes, IndividualsResource.scimNameToIndividualSObjectNameMap);
     }
     
-    private static Blob serializeIndividuals(List<Individual> inds, Integer total, String startIndex, String count, String attributes, String excludedAttributes, String host, boolean prettyPrint) {
+    public static Blob serializeIndividuals(List<Individual> inds, Integer total, String startIndex, String count, String attributes, String excludedAttributes, String host, boolean prettyPrint) {
         JSONGenerator gen = JSON.createGenerator(prettyPrint);
         gen.writeStartObject();
             gen.writeNumberField('totalResults', total);

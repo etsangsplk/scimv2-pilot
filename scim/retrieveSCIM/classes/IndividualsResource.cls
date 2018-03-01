@@ -98,5 +98,7 @@ global class IndividualsResource {
             res.responseBody = SCIMError.serializeError(res.statusCode, ex.getMessage(), req.headers.containsKey('X-Prettyprint'));
             return;
         }              
-    } 
+    }
+
+  
 }
