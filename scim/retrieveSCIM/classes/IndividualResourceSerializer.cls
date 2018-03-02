@@ -1,4 +1,7 @@
 public class IndividualResourceSerializer {
+    final private static String orgId = UserInfo.getOrganizationId();
+    final private static String indSchema = 'urn:salesforce:schemas:extension:2.0:Individual';
+    final private static String indCustomAttrSchema = 'urn:salesforce:schemas:extension:2.0:Individual:' + orgId;
 
     public static void serializeIndividualWithGenerator(List<Individual> inds, String attributes, String excludedAttributes, String host, JSONGenerator gen) {
         serializeIndividualWithGenerator(inds, attributes, excludedAttributes, host, gen, 200, 0);
@@ -10,7 +13,7 @@ public class IndividualResourceSerializer {
             gen.writeStartObject();
                 gen.writeFieldName('schemas');
                 gen.writeStartArray();
-                    gen.writeString('urn:salesforce:schemas:extension:2.0:individual');
+                    gen.writeString(indSchema);
                 gen.writeEndArray();
                 gen.writeStringField('id', i.id);            
 
@@ -38,7 +41,7 @@ public class IndividualResourceSerializer {
 
             Map<String, Schema.SObjectField> r = Schema.sObjectType.Individual.fields.getMap();
             Map<String, Object> customFieldMap = new Map<String, Object>();
-            if (shouldSerialize('urn:salesforce:schemas:extension:2.0:individual:' + UserInfo.getOrganizationId(), attributes, excludedAttributes)) {
+            if (shouldSerialize(indCustomAttrSchema, attributes, excludedAttributes)) {
                 for (String key : r.keySet()) {
                     SObjectField thisField = r.get(key);
                     DescribeFieldResult thisDescribeResult = thisField.getDescribe();
