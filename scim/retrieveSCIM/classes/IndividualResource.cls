@@ -171,7 +171,7 @@ global with sharing class IndividualResource extends SCIMResource {
                 indsOffset = 0;
             }   
             String host = req.headers.get('Host');
-            QueryHolder groupQueryHolder = FilterTranslator.buildAttributeQueryStringWithExcluded(attributes, excludedAttributes, 'id eq \"' + indId + '\"', null, null, IndividualsResource.scimNameToIndividualSObjectNameMap, 'Individual', null, null, null);
+            QueryHolder groupQueryHolder = FilterTranslator.buildAttributeQueryStringWithExcluded(attributes, excludedAttributes, 'id eq \"' + indId + '\"', null, null, scimNameToIndividualSObjectNameMap, 'Individual', null, null, null);
             String actualSoql = groupQueryHolder.getActualQuery();
             List<Individual> inds = Database.query(actualSoql);
             
@@ -232,6 +232,71 @@ global with sharing class IndividualResource extends SCIMResource {
             doUpsert(req, res, null, method); 
         }
     }
+
+    @HttpPut
+    global static void doPut() {
+        RestRequest req = RestContext.request;
+        RestResponse res = RestContext.response;
+        String[] uriParts = req.requestURI.split('/',0);
+        Integer numParts = uriParts.size() - 1;
+
+        if (numParts > 4) { 
+            res.statusCode = 404;
+            res.responseBody = SCIMError.serializeError(res.statusCode, 'No such resource', req.headers.containsKey('X-Prettyprint'));
+            return;
+        } 
+        
+        try {
+            QueryHolder groupQueryHolder = FilterTranslator.buildAttributeQueryStringWithExcluded(null, null, 'id eq \"' + uriParts[numParts] + '\"', null, null, scimNameToIndividualSObjectNameMap, 'Individual', null, null, null);
+            String soql = groupQueryHolder.getActualQuery();
+            
+            //soql = FilterTranslator.buildAttributeQueryString(null, 'id eq \"' + uriParts[numParts] + '\"', null, null, scimNameToIndividualSObjectNameMap, 'Individual',  null, null, null).getActualQuery();
+            List<Individual> inds = Database.query(soql);
+            if (inds != null && inds.size() == 1 ) {
+                Individual ind = inds.get(0);            
+
+/*
+                user.Lastname = null;
+                user.Firstname = null;
+                user.CommunityNickname = null;
+                user.Email = null;
+                user.Street = null;
+                user.City = null;
+                user.State = null;
+                user.PostalCode = null;
+                user.Country = null;
+                user.Phone = null;
+                user.MobilePhone = null;
+                user.Fax = null;
+                user.Title = null;
+                user.LanguageLocaleKey = null;
+                user.LocaleSidKey = null;
+                user.IsActive = null;
+                user.ProfileId = null;
+                user.Profile.Name = null;
+                user.employeeNumber = null;
+                user.Division = null;
+                user.Department = null;
+                user.managerId = null;
+                user.UserRoleId = null;
+                
+                // NOTE ABOUT CUSTOM FIELDS
+                // It is impossible to know what the proper default values for each and every custom fields is.
+                // And not all custom fields are nilable.
+                // So instead of trying to be clever, opting to not handle it instead.
+                // Just tell the user to supply desired default values here.
+*/                
+                doUpsert(req, res, ind, 'PUT'); 
+            } else {
+                res.statusCode = 404;
+                res.responseBody = ScimError.serializeError(res.statusCode, 'Resource https://' + req.headers.get('Host') + '/services/apexrest/scim/v2/Individuals/' + uriParts[numParts] + ' not found', req.headers.containsKey('X-Prettyprint'));
+            } 
+        } catch ( Exception e ) {
+             res.statusCode = 404;
+             res.responseBody = ScimError.serializeError(res.statusCode, e.getMessage(), req.headers.containsKey('X-Prettyprint'));
+        } 
+    }
+
 
     public static void doUpsert(RestRequest req, RestResponse res, Individual i, String operation) {
         Boolean isCreate = ( operation == 'POST' );
