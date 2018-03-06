@@ -201,6 +201,10 @@ global with sharing class IndividualResource extends SCIMResource {
     global static void doDelete() {
         RestRequest req = RestContext.request;
         RestResponse res = RestContext.response;
+
+        doDelete(req, res);
+    }
+    private static void doDelete(RestRequest req, RestResponse res){
         String[] uriParts = req.requestURI.split('/',0);
         Integer numParts = uriParts.size() - 1;  
         
@@ -213,6 +217,7 @@ global with sharing class IndividualResource extends SCIMResource {
             res.responseBody = SCIMError.serializeError(res.statusCode, 'No such resource.', req.headers.containsKey('X-Prettyprint'));
             return;
         }
+
     }
 
     @HttpPost
@@ -222,7 +227,7 @@ global with sharing class IndividualResource extends SCIMResource {
         String method = req.headers.get('X-HTTP-Method-Override');
         if ( method == null ) method = 'POST';
         if ( method.equals('DELETE') ) {
-       //     doDelete(req,res); 
+            doDelete(req,res); 
         }else {
             doUpsert(req, res, null, method); 
         }
@@ -230,7 +235,7 @@ global with sharing class IndividualResource extends SCIMResource {
 
     public static void doUpsert(RestRequest req, RestResponse res, Individual i, String operation) {
         Boolean isCreate = ( operation == 'POST' );
-        Boolean isUpdate =  ( operation == 'PUT' || operation == 'PATCH');
+        Boolean isUpdate =  ( operation == 'PUT' );
         res.addHeader('Content-Type', 'application/json');    
         res.statusCode = 201;
         String error = '';

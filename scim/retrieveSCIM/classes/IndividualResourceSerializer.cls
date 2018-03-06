@@ -59,7 +59,7 @@ public class IndividualResourceSerializer {
                     }
                 }
                 if (!customFieldMap.isEmpty()) {    
-                    gen.writeFieldName('urn:salesforce:schemas:extension:' + UserInfo.getOrganizationId());
+                    gen.writeFieldName(indCustomAttrSchema);
                     gen.writeStartObject();
                         for (String key : customFieldMap.keySet()) {
                             Object value = customFieldMap.get(key);
@@ -101,11 +101,11 @@ public class IndividualResourceSerializer {
     }    
     
     public static boolean shouldSerialize(String attributeName, String attributes) {
-        return ScimResource.shouldSerialize(attributeName, attributes, IndividualsResource.scimNameToIndividualSObjectNameMap);
+        return ScimResource.shouldSerialize(attributeName, attributes, IndividualResource.scimNameToIndividualSObjectNameMap);
     }  
    
     public static boolean shouldSerialize(String attributeName, String attributes, String excludedAttributes) {
-        return ScimResource.shouldSerializeWithExcluded(attributeName, attributes, excludedAttributes, IndividualsResource.scimNameToIndividualSObjectNameMap);
+        return ScimResource.shouldSerializeWithExcluded(attributeName, attributes, excludedAttributes, IndividualResource.scimNameToIndividualSObjectNameMap);
     }
     
     public static Blob serializeIndividuals(List<Individual> inds, Integer total, String startIndex, String count, String attributes, String excludedAttributes, String host, boolean prettyPrint) {

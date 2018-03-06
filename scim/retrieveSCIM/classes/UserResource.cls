@@ -255,7 +255,6 @@ global with sharing class UserResource extends ScimResource {
         Savepoint sp = Database.setSavepoint();
         try {
             user = new UserResource(req.requestBody);
-            System.debug('user: ' + user);
         } catch (ScimException scex) {
             res.statusCode = scex.getStatusCode();
             error = scex.getMessage();
