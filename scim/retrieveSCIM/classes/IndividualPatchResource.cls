@@ -1,4 +1,4 @@
-global with sharing class IndividualPatchParser extends ScimResource {
+global with sharing class IndividualPatchResource extends ScimResource {
     final private static String orgId = UserInfo.getOrganizationId();
     final private static String indSchema = 'urn:salesforce:schemas:extension:2.0:Individual';
     final private static String indCustomAttrSchema = 'urn:salesforce:schemas:extension:2.0:Individual:' + orgId;
@@ -32,11 +32,13 @@ global with sharing class IndividualPatchParser extends ScimResource {
         public List<Map<String, String>> operations {get;set;}
     }
 
-    public IndividualPatchParser(Blob body) {
+    public IndividualPatchResource(Blob body) {
+        System.debug(body.toString());
         System.JSONParser parser = System.JSON.createParser(body.toString());
         while (parser.nextToken() != null) {
             if (ScimResource.isNextTokenField(parser,'schemas')) {
                 this.schemas = parseStringArray('schemas', parser);
+                System.debug(this.schemas);
             } else if (ScimResource.isNextTokenField(parser, 'Operations')) {
                 List<Operation> opers = new List<Operation>();
                 while (parser.nextToken() != JSONToken.END_ARRAY){
@@ -48,13 +50,13 @@ global with sharing class IndividualPatchParser extends ScimResource {
                             if (parser.nextToken() != JSONToken.VALUE_NULL) {
                                 if (text == 'op') {
                                     op.op = parser.getText();
+                                    System.debug(op.op);
                                 } else if (text == 'path') {
                                     op.path = parser.getText();
-                                } else if (text == 'value') {
+                                    System.debug(op.path);
+                                } else if (text == 'value') {       
+                                    System.debug('in value');
                                     while (parser.nextToken() != JSONToken.END_OBJECT){
-                                        System.debug('current token: ' + parser.getCurrentName());
-                                        if (isNextTokenField(parser,'schemas')) val.schemas = parseStringArray('schemas', parser);                            
-                                        if (isNextTokenField(parser,'id')) val.id = parseString('id',parser);
                                         if (isNextTokenField(parser,'name')) val.name = parseSimpleObject('name', parser);
 
                                         if (isNextTokenField(parser,'birthDate')) val.birthDate = date.valueOf(parseString('birthDate', parser));
@@ -69,6 +71,7 @@ global with sharing class IndividualPatchParser extends ScimResource {
                                         if (isNextTokenField(parser,'sendIndividualData')) val.sendIndividualData = parseBoolean('sendIndividualData',parser);
                                         if (isNextTokenField(parser,'shouldForget')) val.shouldForget = parseBoolean('shouldForget',parser);
                                         if (doesNextTokenFieldStartWith(parser,indCustomAttrSchema)) val.customFieldValues = parseExtendedSchemaMap(parser);
+
                                     }
                                     op.value = val;
 
@@ -86,11 +89,11 @@ global with sharing class IndividualPatchParser extends ScimResource {
             }
         }
     }
-    private static boolean doesNextTokenFieldStartWith(System.JSONParser parser, String fieldName) {
+    public static boolean doesNextTokenFieldStartWith(System.JSONParser parser, String fieldName) {
 		return ((parser.getCurrentToken() == JSONToken.FIELD_NAME) && (parser.getText().startsWith(fieldName)));    
     }
     
-    private static Map<String, String> parseExtendedSchemaMap(System.JSONparser parser){
+    public static Map<String, String> parseExtendedSchemaMap(System.JSONparser parser){
         Map<String,String> obj = new Map<String,String>();
         String name = parser.getText();
         parser.nextToken();
@@ -100,7 +103,7 @@ global with sharing class IndividualPatchParser extends ScimResource {
         return obj;
     }
     
-    private static void consumeObject(JSONParser parser) {
+    public static void consumeObject(JSONParser parser) {
 		Integer depth = 0;
 		do {
 			JSONToken curr = parser.getCurrentToken();

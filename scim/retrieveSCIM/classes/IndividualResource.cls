@@ -25,6 +25,10 @@ global with sharing class IndividualResource extends SCIMResource {
     public Map<String,Object> customFieldValues {get;set;}
     public List<Map<String, String>> operations {get;set;}
 
+    final public static Set<String> unsupportedAttrs = new Set<String>{};
+    final public static Set<String> notNillableAttrs = new Set<String>{'familyName'};
+
+
     static {
         scimNameToIndividualSObjectNameMap = new Map<String, ScimSoqlAttributeProcessor>();
         scimNameToIndividualSObjectNameMap.put('id', new StandardAttributeProcessor('Id', Schema.SOAPType.String, false));
@@ -97,7 +101,6 @@ global with sharing class IndividualResource extends SCIMResource {
 
             if (isNextTokenField(parser,indCustomAttrSchema)) {
                 this.customFieldValues = parseSimpleObject(indCustomAttrSchema, parser);
-                System.debug(this.customFieldValues);
             }
 
             if (isNextTokenField(parser, 'meta')) {    
@@ -249,43 +252,11 @@ global with sharing class IndividualResource extends SCIMResource {
         try {
             QueryHolder groupQueryHolder = FilterTranslator.buildAttributeQueryStringWithExcluded(null, null, 'id eq \"' + uriParts[numParts] + '\"', null, null, scimNameToIndividualSObjectNameMap, 'Individual', null, null, null);
             String soql = groupQueryHolder.getActualQuery();
-            
-            //soql = FilterTranslator.buildAttributeQueryString(null, 'id eq \"' + uriParts[numParts] + '\"', null, null, scimNameToIndividualSObjectNameMap, 'Individual',  null, null, null).getActualQuery();
             List<Individual> inds = Database.query(soql);
             if (inds != null && inds.size() == 1 ) {
                 Individual ind = inds.get(0);            
 
-/*
-                user.Lastname = null;
-                user.Firstname = null;
-                user.CommunityNickname = null;
-                user.Email = null;
-                user.Street = null;
-                user.City = null;
-                user.State = null;
-                user.PostalCode = null;
-                user.Country = null;
-                user.Phone = null;
-                user.MobilePhone = null;
-                user.Fax = null;
-                user.Title = null;
-                user.LanguageLocaleKey = null;
-                user.LocaleSidKey = null;
-                user.IsActive = null;
-                user.ProfileId = null;
-                user.Profile.Name = null;
-                user.employeeNumber = null;
-                user.Division = null;
-                user.Department = null;
-                user.managerId = null;
-                user.UserRoleId = null;
-                
-                // NOTE ABOUT CUSTOM FIELDS
-                // It is impossible to know what the proper default values for each and every custom fields is.
-                // And not all custom fields are nilable.
-                // So instead of trying to be clever, opting to not handle it instead.
-                // Just tell the user to supply desired default values here.
-*/                
+            
                 doUpsert(req, res, ind, 'PUT'); 
             } else {
                 res.statusCode = 404;
@@ -297,8 +268,222 @@ global with sharing class IndividualResource extends SCIMResource {
         } 
     }
 
+    @HttpPatch
+    global static void doPatch(){
+        // will use SCIMPatchSimple rules for Patch
+        
+        RestRequest req = RestContext.request;
+        RestResponse res = RestContext.response;
+        res.addHeader('Content-Type', 'application/json');    
+        res.statusCode = 201;
+        String error = '';
 
-    public static void doUpsert(RestRequest req, RestResponse res, Individual i, String operation) {
+        String[] uriParts = req.requestURI.split('/',0);
+        Integer numParts = uriParts.size() - 1;           
+        if (numParts >= 5) { 
+            res.statusCode = 404;
+            res.responseBody = SCIMError.serializeError(res.statusCode, 'No such resource', req.headers.containsKey('X-Prettyprint'));
+            return;
+        }                 
+
+        Individual ind = [ Select ID from Individual where Id = :uriParts[numParts]];
+        Individual tempInd = new Individual();
+        tempInd.id = ind.Id;
+        
+		IndividualPatchResource ipr = new IndividualPatchResource(req.requestBody);
+        String schema = ipr.schemas.get(0);
+
+        System.debug('Patch Resource: ' + ipr);
+        if (!schema.equals('urn:ietf:params:scim:api:messages:2.0:PatchOp')){
+            res.statusCode = 400;
+            res.responseBody = SCIMError.serializeError(res.statusCode, 'Improper Schema.', req.headers.containsKey('X-Prettyprint'));
+            return;
+        }
+
+        Savepoint sp = Database.setSavepoint();
+        try {
+            for (IndividualPatchResource.Operation op : ipr.operations){
+                String operation = op.op;
+                String path = op.path;
+                
+                // check for remove operations first
+                // to avoid deref'ing nulls
+                if (op.op == 'remove') {
+                    System.debug('in remove via: ' + op);
+                    if (isUnsupported(op.path)){
+                            res.statusCode = 400;
+                            error += 'UNSUPPORTED_FIELD: ' + op.path;
+                            SCIMException e = new SCIMException();
+                            e.setMessage(error);
+                            e.setStatusCode(400);
+                    }
+                    else if (isNotNillable(op.path)){
+                            res.statusCode = 400;
+                            error += 'FIELD CANNOT BE NULL: ' + op.path;
+                            SCIMException e = new SCIMException();
+                            e.setMessage(error);
+                            e.setStatusCode(400);                            
+                    }
+                	else if (op.path == null) {
+                    	res.statusCode = 400;
+                    	error += 'MISING PATH';
+	                    SCIMException e = new SCIMException();
+    	                e.setMessage(error);
+        	            e.setStatusCode(res.statusCode);
+            	    }
+                    else if ((op.path != null) && (op.path == 'familyName')) tempInd.lastName = null;
+                    else if ((op.path != null) && (op.path == 'givenName')) tempInd.firstName = null;                    
+                    else if ((op.path != null) && (op.path == 'honorificPrefix')) tempInd.salutation = null;
+                    // protect against bug
+                    // if ((op.path != null) && (op.path == 'birthDate')) tempInd.birthDate = null;
+  
+                    else if ((op.path != null) && (op.path == 'individualsAge')) tempInd.individualsAge = null;
+
+                    // technically you cannot nillify the checkboxes
+                    // set them to false instead                    
+                    else if ((op.path != null) && (op.path == 'canStorePiiElsewhere')) {system.debug('pii'); tempInd.canStorePiiElsewhere = false; System.debug(tempInd);}
+                    else if ((op.path != null) && (op.path == 'hasOptedOutGeoTracking')) tempInd.hasOptedOutGeoTracking = false;
+                    else if ((op.path != null) && (op.path == 'hasOptedOutProcessing')) tempInd.hasOptedOutProcessing = false;
+                    else if ((op.path != null) && (op.path == 'hasOptedOutProfiling')) tempInd.hasOptedOutProfiling = false;
+                    else if ((op.path != null) && (op.path == 'hasOptedOutSolicit')) tempInd.hasOptedOutSolicit = false;
+                    else if ((op.path != null) && (op.path == 'hasOptedOutTracking')) tempInd.hasOptedOutTracking = false;
+                    else if ((op.path != null) && (op.path == 'sendIndividualData')) tempInd.sendIndividualData = false;
+                    else if ((op.path != null) && (op.path == 'shouldForget')) tempInd.shouldForget = false;
+
+                    // handle custom attributes
+                    // TODO update to set checkbox type fields to false not null
+                    else if ((op.path != null) && scimNameToIndividualSObjectNameMap.containsKey(op.path)){ 
+                            ScimSoqlAttributeProcessor customProcessor =  scimNameToIndividualSObjectNameMap.get(op.path);
+                            Schema.SOAPType soapType = customProcessor.getSOAPType();
+                            if(String.valueOf(soapType) == 'BOOLEAN'){
+                                tempInd.put(customProcessor.getSoqlAttribute(), false);
+                            } else {
+                                tempInd.put(customProcessor.getSoqlAttribute(), null);
+                            }
+
+                        }
+
+                } else if ((op.op == 'replace') || (op.op == 'add')) {
+                    System.debug('in replace or add via:' + op);
+                    if (op.value.name != null) {
+                        Map<String, String> nameMap = op.value.name;
+                        if (nameMap.containsKey('givenName')) tempInd.FirstName = nameMap.get('givenName');
+                        else if (nameMap.containsKey('familyName')) tempInd.lastName = nameMap.get('familyName');
+                        else if (nameMap.containsKey('honorificPrefix')) tempInd.salutation = nameMap.get('honorificPrefix');
+                    }
+                    else if (op.value.birthDate != null) tempInd.birthDate = op.value.birthdate;
+                    else if (op.value.individualsAge != null) tempInd.individualsAge = op.value.individualsAge;
+
+                    else if (op.value.canStorePiiElsewhere != null) tempInd.canStorePiiElsewhere = op.value.canStorePiiElsewhere;
+                    else if (op.value.hasOptedOutGeoTracking != null) tempInd.hasOptedOutGeoTracking = op.value.hasOptedOutGeoTracking;
+                    else if (op.value.hasOptedOutProcessing != null) tempInd.hasOptedOutProcessing = op.value.hasOptedOutProcessing;
+                    else if (op.value.hasOptedOutProfiling != null) tempInd.hasOptedOutProfiling = op.value.hasOptedOutProfiling;
+                    else if (op.value.hasOptedOutSolicit != null) tempInd.hasOptedOutSolicit = op.value.hasOptedOutSolicit;
+                    else if (op.value.hasOptedOutTracking != null) tempInd.hasOptedOutTracking = op.value.hasOptedOutTracking;
+                    else if (op.value.sendIndividualData != null) tempInd.sendIndividualData = op.value.sendIndividualData;
+                    else if (op.value.shouldForget != null) tempInd.shouldForget = op.value.shouldForget;
+                    else if (op.value.customFieldValues != null) {
+                        // handle custom attributes
+                        Set<String> keys = op.value.customFieldValues.keySet();
+                        for (String key : keys) {
+                            if (scimNameToIndividualSObjectNameMap.containsKey(key)){
+                                Object customFieldValue = scimNameToIndividualSObjectNameMap.get(key);
+                                ScimSoqlAttributeProcessor customProcessor =  scimNameToIndividualSObjectNameMap.get(key);
+                                                     
+                                // NOTE: customFieldValue is always a string, because of a limitation of 
+                                // the parseSimpleObject de-serializing always with getText.
+                                // making it dynamic there makes the method not simple in principle, so
+                                // for simplicity, we just coerce it back to the right type here based on
+                                // the field's type
+                                Schema.SOAPType type = customProcessor.getSOAPType();
+
+                                // TODO
+                                // should not have to do straigh string comparison
+                                // but cannot figure out why the same code copied from doCreateOrUpdate
+                                // won't work here
+                                if (String.valueOf(type) == 'BOOLEAN') {
+                                    tempInd.put(customProcessor.getSoqlAttribute(), Boolean.valueOf(op.value.customFieldValues.get(key)));
+                                }
+                                
+                                else if (String.valueOf(type) == 'DATE') {
+                                    tempInd.put(customProcessor.getSoqlAttribute(), Date.valueOf(op.value.customFieldValues.get(key)));
+                                }
+                                else if (String.valueOf(type) == 'DATETIME') {
+                                    tempInd.put(customProcessor.getSoqlAttribute(), Datetime.valueOf(op.value.customFieldValues.get(key)));
+                                }
+                                else if (String.valueOf(type) == 'DOUBLE') {
+                                    tempInd.put(customProcessor.getSoqlAttribute(), Double.valueOf(op.value.customFieldValues.get(key)));
+                                }
+                                else if (String.valueOf(type) == 'ID') {
+                                    tempInd.put(customProcessor.getSoqlAttribute(), String.valueOf(op.value.customFieldValues.get(key)));
+                                }
+                                else if (String.valueOf(type) == 'INTEGER') {
+                                    tempInd.put(customProcessor.getSoqlAttribute(), Integer.valueOf(op.value.customFieldValues.get(key)));
+                                }
+                                else if (String.valueOf(type) == 'STRING') {
+                                    tempInd.put(customProcessor.getSoqlAttribute(), String.valueOf(op.value.customFieldValues.get(key)));
+                                }
+                                else if (String.valueOf(type) == 'TIME') {
+                                    tempInd.put(customProcessor.getSoqlAttribute(), Datetime.valueOf(op.value.customFieldValues.get(key)));
+                                }     
+                                else if (String.valueOf(type) == 'BASE64BINARY') {
+                                    tempInd.put(customProcessor.getSoqlAttribute(), EncodingUtil.base64Decode((String) op.value.customFieldValues.get(key)));
+                                }                                                    
+                                else {
+                                    error += 'INVALID:unsupported field type for field : ' + key;  
+                                    res.statusCode = 400;
+                                }   
+                            }  
+                        }
+                    }
+
+                } else {
+                    res.statusCode = 400;
+                    error += 'IMPROPER Operation: ' + op.op;
+                    SCIMException e = new SCIMException();
+                    e.setMessage(error);
+                    e.setStatusCode(res.statusCode);
+                    throw e;
+                }
+                
+                if (res.statusCode == 201){
+                    System.debug('tempInd: ' + tempInd);
+                    update tempInd;
+                } else {
+                    SCIMException e = new SCIMException();
+                    e.setMessage(error);
+                    e.setStatusCode(res.statusCode);
+                    throw e;
+                }
+            }
+        } catch (SCIMException e) {
+            res.addHeader('Content-Type', 'application/json');
+            res.statusCode = e.getStatusCode();
+            if (res.statusCode == null) {
+                res.statusCode = 400;
+            } 
+            res.responseBody = ScimError.serializeError(res.statusCode, e.getMessage(), req.headers.containsKey('X-Prettyprint'));
+            Database.rollback(sp);
+            return;
+        }
+        doGet(); 
+    }
+    public static boolean isUnsupported (String attr) {
+        Boolean result = false;
+        if (unsupportedAttrs.contains(attr)) {
+            result = true;
+        }
+        return result;
+    }
+
+    public static boolean isNotNillable (String attr) {
+        Boolean result = false;
+        if (notNillableAttrs.contains(attr)) {
+            result = true;
+        }
+        return result;
+    }
+    private static void doUpsert(RestRequest req, RestResponse res, Individual i, String operation) {
         Boolean isCreate = ( operation == 'POST' );
         Boolean isUpdate =  ( operation == 'PUT' );
         res.addHeader('Content-Type', 'application/json');    
@@ -359,11 +544,8 @@ global with sharing class IndividualResource extends SCIMResource {
         if (indRes.shouldForget != null) ind.shouldForget = indRes.shouldForget;
 
         if (indRes.customFieldValues != null) {
-            System.debug('in POST custom field values');
             for (String customFieldName : indRes.customFieldValues.keySet()) {
-                System.debug('custom field name: ' + customFieldName);
                 Object customFieldValue = indRes.customFieldValues.get(customFieldName);
-                System.debug('custom field value: ' + customFieldvalue);
                 // NOTE: customFieldValue is always a string, because of a limitation of 
                 // the parseSimpleObject de-serializing always with getText.
                 // making it dynamic there makes the method not simple in principle, so

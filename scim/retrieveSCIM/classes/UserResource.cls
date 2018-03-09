@@ -1367,10 +1367,7 @@ global with sharing class UserResource extends ScimResource {
                                 // for simplicity, we just coerce it back to the right type here based on
                                 // the field's type
                                 Schema.SOAPType type = customProcessor.getSOAPType();
-                                if (String.valueOf(type) == 'BOOLEAN'){
-                                    System.debug(String.valueOf(type));
-                                }
-                                
+
                                 // TODO
                                 // should not have to do straigh string comparison
                                 // but cannot figure out why the same code copied from doCreateOrUpdate
