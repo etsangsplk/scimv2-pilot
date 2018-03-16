@@ -1,1 +1,0 @@
-public class IllegalFilterException extends ScimException { }

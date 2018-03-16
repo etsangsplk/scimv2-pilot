@@ -11,6 +11,8 @@ Getting Started
 ---------------
 Use the [Salesforce Migration Tool](https://developer.salesforce.com/docs/atlas.en-us.daas.meta/daas/meta_development.htm) to install this unpackaged Apex. It will create a set of Apex REST web services that will act as your SCIM client. The SCIM endpoints will look like https://MYDOMAIN.my.salesforce.com/services/apexrest/scim/v2
 
+There are 2 deployment targets: deploySCIM and deploySCIMWithIndividual. If you have enabled the [Individual] (https://developer.salesforce.com/docs/atlas.en-us.object_reference.meta/object_reference/sforce_api_objects_individual.htm) object use the second deployment target
+
 Verbs and Endpoints
 -------------------
 This implementation supports the following endpoints:
@@ -21,12 +23,14 @@ This implementation supports the following endpoints:
 * ResourceTypes: /services/apexrest/scim/v2/ResourceTypes
 * ServiceProviderConfigs: /services/apexrest/scim/v2/ServiceProviderConfigs
 * Schemas: /services/apexrest/scim/v2/Schemas
+* Me: /servivices/apexrest/scim/v2/Me
+* Individuals: /services/apexrest/scim/v2/Individuals
 
 This implementation supports:
 * GET against all endpoints
 * PATCH, POST,PUT against all endpoints
 * PATCH follows the PATCH Simple pattern and does not support filters
-* POST-based search against /Users
+* POST-based search against /Users and /Individuals
 
 Creating External Users
 -----------------------

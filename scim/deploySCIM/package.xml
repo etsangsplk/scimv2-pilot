@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Package xmlns="http://soap.sforce.com/2006/04/metadata">
-    <fullName>SCIM v2</fullName>
+    <fullName>scimv2_noIndividual</fullName>
     <types>
         <members>DotSearchResource</members>
         <members>EntitlementPatchParser</members>
@@ -23,14 +23,12 @@
         <members>PhotosAttributeProcessor</members>
         <members>ProfileMembersAttributeProcessor</members>
         <members>QueryHolder</members>
-        <members>ResourceTypeResource</members>
         <members>RoleMembersAttributeProcessor</members>
         <members>RolePatchParser</members>
         <members>RoleResource</members>
         <members>RolesAttributeProcessor</members>
         <members>RolesResource</members>
         <members>RootResource</members>
-        <members>SCIMPatchParser</members>
         <members>SchemasResource</members>
         <members>ScimError</members>
         <members>ScimException</members>
@@ -41,8 +39,9 @@
         <members>UserDotSearchResource</members>
         <members>UserPatchResource</members>
         <members>UserResource</members>
+        <members>UserResourceSerializer</members>
         <members>UsersResource</members>
         <name>ApexClass</name>
     </types>
-    <version>41.0</version>
+    <version>42.0</version>
 </Package>
