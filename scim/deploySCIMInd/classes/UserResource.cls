@@ -1146,32 +1146,32 @@ global with sharing class UserResource extends ScimResource {
                     // and other extensions (alias)
                     if (op.path != null) {
                         if(op.path == 'givenName') tempUser.firstname = null;
-                        else if (op.path == 'familyName') tempuser.LastName = null;
-                        else if (op.path == 'title') tempuser.title = null;
-                        else if (op.path == 'preferredLanguage') tempuser.languagelocalekey = null;
-                        else if (op.path == 'emailEncodingKey') tempuser.emailEncodingKey = null;
-                        else if (op.path == 'locale') tempuser.localesidkey = null;
-                        else if (op.path == 'timezone') tempuser.timezonesidkey = null;
-                        else if (op.path == 'employeeNumber') tempuser.employeeNumber = null;
-                        else if (op.path == 'division') tempuser.division = null;
-                        else if (op.path == 'department') tempuser.department = null;
-                        else if (op.path == 'nickName') tempuser.communityNickname = null;
-                        else if (op.path == 'manager') tempuser.managerId = null;
-                        else if (op.path == 'delegatedApprover') tempuser.delegatedApproverId = null;
-                        else if (op.path == 'active') tempuser.isActive = false;
-                        else if (op.path == 'roles') tempuser.userRoleId = null;
-                        else if (op.path.startsWith('addresses')) {
+                        if (op.path == 'familyName') tempuser.LastName = null;
+                        if (op.path == 'title') tempuser.title = null;
+                        if (op.path == 'preferredLanguage') tempuser.languagelocalekey = null;
+                        if (op.path == 'emailEncodingKey') tempuser.emailEncodingKey = null;
+                        if (op.path == 'locale') tempuser.localesidkey = null;
+                        if (op.path == 'timezone') tempuser.timezonesidkey = null;
+                        if (op.path == 'employeeNumber') tempuser.employeeNumber = null;
+                        if (op.path == 'division') tempuser.division = null;
+                        if (op.path == 'department') tempuser.department = null;
+                        if (op.path == 'nickName') tempuser.communityNickname = null;
+                        if (op.path == 'manager') tempuser.managerId = null;
+                        if (op.path == 'delegatedApprover') tempuser.delegatedApproverId = null;
+                        if (op.path == 'active') tempuser.isActive = false;
+                        if (op.path == 'roles') tempuser.userRoleId = null;
+                        if (op.path.startsWith('addresses')) {
                             tempuser.street = null;
                             tempuser.city = null;
                             tempuser.State = null;
                             tempuser.postalcode = null;
                             tempuser.Country = null;
                         }
-                        else if (op.path == 'groups') {
+                        if (op.path == 'groups') {
                             List<GroupMember> currentGroups = [select id, groupId from GroupMember where userOrGroupId =: user.id];
                             delete currentGroups;
                         }
-                        else if (op.path == 'entitlements'){
+                        if (op.path == 'entitlements'){
                             // cannot remove all entitlements
                             res.statusCode = 400;
                             error += 'INVALID: Cannot remove all entitlements. Use replace';
@@ -1179,24 +1179,25 @@ global with sharing class UserResource extends ScimResource {
                             e.setMessage(error);
                             e.setStatusCode(res.statusCode);
                         }
-                        else if (isUnsupported(op.path)){
+                        if (isUnsupported(op.path)){
                             res.statusCode = 400;
                             error += 'UNSUPPORTED_FIELD: ' + op.path;
                             SCIMException e = new SCIMException();
                             e.setMessage(error);
                             e.setStatusCode(400);
                         }
-                        else if (isNotNillable(op.path)){
+                        if (isNotNillable(op.path)){
                             res.statusCode = 400;
                             error += 'FIELD CANNOT BE NULL: ' + op.path;
                             SCIMException e = new SCIMException();
                             e.setMessage(error);
                             e.setStatusCode(400);                            
-                        } else if (scimNameToUserSObjectNameMap.containsKey(op.path)){ // handle custom attributes
+                        }
+                        if (scimNameToUserSObjectNameMap.containsKey(op.path)){ // handle custom attributes
                             ScimSoqlAttributeProcessor customProcessor =  scimNameToUserSObjectNameMap.get(op.path);
                             tempUser.put(customProcessor.getSoqlAttribute(), null);
                         }
-                	} else if (op.path == null) {
+                	} if (op.path == null) {
                     	res.statusCode = 400;
                     	error += 'MISING PATH';
 	                    SCIMException e = new SCIMException();
@@ -1211,20 +1212,20 @@ global with sharing class UserResource extends ScimResource {
                     if (op.value.name != null){
                         Map<String, String> nameMap = op.value.name;
                         if (nameMap.containsKey('givenName')) tempUser.FirstName = nameMap.get('givenName');
-                        else if (nameMap.containsKey('familyName')) tempUser.lastName = nameMap.get('familyName');
+                        if (nameMap.containsKey('familyName')) tempUser.lastName = nameMap.get('familyName');
                     }
-                    else if (op.value.title != null) tempUser.Title = op.value.title;
-                    else if (op.value.preferredLanguage != null) tempuser.languagelocalekey = op.value.preferredLanguage;
-                    else if (op.value.emailEncodingKey != null) tempuser.emailEncodingKey = op.value.emailEncodingKey;
-                    else if (op.value.locale != null) tempuser.localesidkey = op.value.locale;
-                    else if (op.value.timezone != null) tempuser.timezonesidkey = op.value.timezone;
-                    else if (op.value.employeeNumber != null) tempuser.employeeNumber = op.value.employeeNumber;
-                    else if (op.value.division != null) tempuser.division = op.value.division;
-                    else if (op.value.department != null) tempuser.department = op.value.department;
-                    else if (op.value.nickName != null) tempuser.communityNickname = op.value.nickName;
-                    else if (op.value.password != null) passwordString = op.value.password;
-                    else if (op.value.active != null) tempuser.isActive = op.value.active;
-                    else if (op.value.addresses != null) {
+                    if (op.value.title != null) tempUser.Title = op.value.title;
+                    if (op.value.preferredLanguage != null) tempuser.languagelocalekey = op.value.preferredLanguage;
+                    if (op.value.emailEncodingKey != null) tempuser.emailEncodingKey = op.value.emailEncodingKey;
+                    if (op.value.locale != null) tempuser.localesidkey = op.value.locale;
+                    if (op.value.timezone != null) tempuser.timezonesidkey = op.value.timezone;
+                    if (op.value.employeeNumber != null) tempuser.employeeNumber = op.value.employeeNumber;
+                    if (op.value.division != null) tempuser.division = op.value.division;
+                    if (op.value.department != null) tempuser.department = op.value.department;
+                    if (op.value.nickName != null) tempuser.communityNickname = op.value.nickName;
+                    if (op.value.password != null) passwordString = op.value.password;
+                    if (op.value.active != null) tempuser.isActive = op.value.active;
+                    if (op.value.addresses != null) {
                         if (op.value.addresses.size() > 1){
                             error += 'INVALID: User can only have one address';
                             res.statusCode = 400;
@@ -1240,7 +1241,7 @@ global with sharing class UserResource extends ScimResource {
                             }
                         }
                     }
-                    else if (op.value.emails != null) {
+                    if (op.value.emails != null) {
                         System.debug('PATCHing emails');
                         if (op.value.emails.size() > 1) {
                             error += 'INVALID: User can only have one email';
@@ -1251,7 +1252,7 @@ global with sharing class UserResource extends ScimResource {
                             tempUser.Email = tempEmailVal.get('value');
                         }
                     }
-                    else if (op.value.roles != null) {
+                    if (op.value.roles != null) {
                         if(op.value.roles.size() > 1){
                             error += 'INVALID:user_must_have_only_one_role;';  
                             res.statusCode = 400;
@@ -1260,13 +1261,13 @@ global with sharing class UserResource extends ScimResource {
 	                        tempuser.userRoleId = tempRoleVal.get('value');
                         }
                     }
-                    else if (op.value.manager != null) {
+                    if (op.value.manager != null) {
                         tempuser.managerId = (String) op.value.manager.get('value');
                     }
-                    else if (op.value.delegatedApprover != null) {
+                    if (op.value.delegatedApprover != null) {
                         tempuser.delegatedApproverId = (String) op.value.delegatedApprover.get('value');
                     }
-                    else if (op.value.emails != null) {
+                    if (op.value.emails != null) {
                         if (op.value.emails.size() > 1){
                             error += 'INVALID: User can only have one email';
                             res.statusCode = 400;                          
@@ -1275,7 +1276,7 @@ global with sharing class UserResource extends ScimResource {
                             tempuser.email = tempEmailVal.get('value');
                         }
                     }
-                    else if (op.value.groups != null){
+                    if (op.value.groups != null){
                         List<GroupMember> groupsToProcess = new List<GroupMember>();
                         for (Map<String, String> g: op.value.groups){
                             GroupMember gm = new GroupMember();
@@ -1290,7 +1291,7 @@ global with sharing class UserResource extends ScimResource {
                         }
                         insert groupsToProcess;
                     }
-                    else if (op.value.entitlements != null) {
+                    if (op.value.entitlements != null) {
                         List<String> profileToProcess = new List<String>();
                         List<PermissionSetAssignment> permSetsToProcess = new List<PermissionSetAssignment>();           
                         
@@ -1356,7 +1357,7 @@ global with sharing class UserResource extends ScimResource {
                             }
                         }      
                     }
-                    else if (op.value.customFieldValues != null){ // handle custom attributes
+                    if (op.value.customFieldValues != null){ // handle custom attributes
                         Set<String> keys = op.value.customFieldValues.keySet();
                         for (String key : keys) {
                             if (scimNameToUserSObjectNameMap.containsKey(key)){
@@ -1412,7 +1413,7 @@ global with sharing class UserResource extends ScimResource {
                             }  
                         }
                     }
-                    else if (op.value.otherUserProperties != null) {
+                    if (op.value.otherUserProperties != null) {
                         if (op.value.otherUserProperties.containsKey(otherSchemaURN + ':alias')){
                             String tempAlias = (String)op.value.otherUserProperties.get(otherSchemaURN + ':alias');
                             if (tempAlias.length() > 8){
