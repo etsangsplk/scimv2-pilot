@@ -27,6 +27,7 @@
         <members>PhotosAttributeProcessor</members>
         <members>ProfileMembersAttributeProcessor</members>
         <members>QueryHolder</members>
+        <members>ResourceTypeResource</members>        
         <members>RoleMembersAttributeProcessor</members>
         <members>RolePatchParser</members>
         <members>RoleResource</members>
